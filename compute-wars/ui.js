@@ -19,6 +19,7 @@ import {
 
 let gameState = null;
 let eventLog = [];
+let travelingTo = null;  // UI state for travel animation
 const MAX_LOG_ENTRIES = 50;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,15 +201,15 @@ function renderMarketPanel() {
 }
 
 function renderTravelPanel() {
-  if (gameState.travelingTo) {
-    const dest = MARKETS[gameState.travelingTo];
+  // Show traveling animation if in progress
+  if (travelingTo) {
+    const dest = MARKETS[travelingTo];
     return `
       <div class="panel travel-panel">
         <div class="panel-header">┌─ TRAVELING ─────┐</div>
         <div class="traveling-status">
           <div class="travel-progress">▓▓▓▓▓░░░░░</div>
           <div class="travel-dest">En route to ${dest.name}...</div>
-          <div class="travel-hint">Take an action to arrive</div>
         </div>
       </div>
     `;
@@ -572,7 +573,16 @@ function attachEvents() {
   document.querySelectorAll('.btn-travel').forEach(btn => {
     btn.addEventListener('click', () => {
       const destination = btn.dataset.destination;
-      executeAction({ action: 'travel', destination });
+
+      // Show traveling animation
+      travelingTo = destination;
+      render();
+
+      // Execute travel and show result after delay
+      setTimeout(() => {
+        travelingTo = null;
+        executeAction({ action: 'travel', destination });
+      }, 800);
     });
   });
 

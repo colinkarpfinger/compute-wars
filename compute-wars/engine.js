@@ -80,7 +80,6 @@ export function createInitialState() {
     unlockedUpgrades: [],
     purchasedUpgrades: [],
     pendingEvents: [],
-    travelingTo: null,
 
     // Stats tracking for milestones
     stats: {
@@ -587,22 +586,6 @@ export function processAction(state, action) {
     return response;
   }
 
-  // Handle traveling state
-  if (state.travelingTo) {
-    // Auto-arrive
-    state.player.location = state.travelingTo;
-    if (!state.stats.marketsVisited.includes(state.travelingTo)) {
-      state.stats.marketsVisited.push(state.travelingTo);
-    }
-    response.turnSummary = `Arrived in ${MARKETS[state.travelingTo].name}. `;
-    state.travelingTo = null;
-
-    // Roll for travel events (customs)
-    const travelEvents = rollForEvents(state, true, state.player.location);
-    response.events.push(...travelEvents);
-    applyEvents(state, travelEvents);
-  }
-
   const market = state.markets[state.player.location];
 
   // Process the action
@@ -723,8 +706,18 @@ export function processAction(state, action) {
         return response;
       }
 
-      state.travelingTo = destination;
-      response.turnSummary += `Traveling to ${MARKETS[destination].name}... `;
+      // Roll for customs events during travel (before arriving)
+      const travelEvents = rollForEvents(state, true, destination);
+      response.events.push(...travelEvents);
+      applyEvents(state, travelEvents);
+
+      // Complete the travel immediately
+      state.player.location = destination;
+      if (!state.stats.marketsVisited.includes(destination)) {
+        state.stats.marketsVisited.push(destination);
+      }
+
+      response.turnSummary += `Traveled to ${MARKETS[destination].name}. `;
       response.success = true;
       break;
     }
