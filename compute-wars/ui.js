@@ -54,47 +54,42 @@ function escapeHtml(text) {
 }
 
 function renderSparkline(prices, goodId) {
-  // Unicode block characters for sparkline (8 levels)
-  const blocks = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+  const width = 60;
+  const height = 20;
+  const padding = 2;
 
-  if (!prices || prices.length === 0) {
-    return '<span class="sparkline">────────</span>';
+  if (!prices || prices.length < 2) {
+    // Show flat line placeholder
+    return `<svg class="sparkline" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <line x1="${padding}" y1="${height/2}" x2="${width-padding}" y2="${height/2}" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+    </svg>`;
   }
 
-  // Get the base price range for this good to scale against
+  // Get the price range for this good to scale against
   const good = GOODS[goodId];
   const min = good.baseMin * 0.7;
   const max = good.baseMax * 1.3;
 
-  // Build the sparkline
-  let sparkline = '';
-  const displayPrices = prices.slice(-8); // Last 8 prices
+  const displayPrices = prices.slice(-8);
 
-  // Pad with empty spaces if less than 8 prices
-  const padding = 8 - displayPrices.length;
-  for (let i = 0; i < padding; i++) {
-    sparkline += '<span class="spark-empty">·</span>';
-  }
-
-  for (let i = 0; i < displayPrices.length; i++) {
-    const price = displayPrices[i];
-    // Scale price to 0-7 range
+  // Build SVG path points
+  const points = displayPrices.map((price, i) => {
+    const x = padding + (i / (displayPrices.length - 1)) * (width - padding * 2);
     const normalized = Math.max(0, Math.min(1, (price - min) / (max - min)));
-    const level = Math.floor(normalized * 7);
-    const block = blocks[level];
+    const y = height - padding - (normalized * (height - padding * 2));
+    return `${x},${y}`;
+  }).join(' ');
 
-    // Color based on trend (compare to previous)
-    let colorClass = 'spark-neutral';
-    if (i > 0) {
-      const prev = displayPrices[i - 1];
-      if (price > prev * 1.02) colorClass = 'spark-up';
-      else if (price < prev * 0.98) colorClass = 'spark-down';
-    }
+  // Color based on overall trend (first vs last)
+  const first = displayPrices[0];
+  const last = displayPrices[displayPrices.length - 1];
+  let color = '#666'; // neutral
+  if (last > first * 1.02) color = '#f44'; // up = bad for buyer (red)
+  else if (last < first * 0.98) color = '#4f4'; // down = good for buyer (green)
 
-    sparkline += `<span class="${colorClass}">${block}</span>`;
-  }
-
-  return `<span class="sparkline">${sparkline}</span>`;
+  return `<svg class="sparkline" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
 }
 
 function getPriceClass(price, good) {
