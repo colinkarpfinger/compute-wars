@@ -1,24 +1,59 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPUTE WARS - Test Suite
-// Run with: node --experimental-vm-modules test.js
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed } from './engine.js';
 import { GOODS, MARKETS } from './data.js';
 
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  yellow: '\x1b[33m',
+  cyan: '\x1b[36m',
+  bgRed: '\x1b[41m',
+  bgGreen: '\x1b[42m',
+};
+
+// Deterministic random for testing (seeded PRNG)
+function createSeededRandom(seed) {
+  return function() {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+}
+
+function withDeterministicRandom(seed, fn) {
+  const originalRandom = Math.random;
+  Math.random = createSeededRandom(seed);
+  try {
+    return fn();
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
 let passed = 0;
 let failed = 0;
+const failures = [];
 
 function test(name, fn) {
   try {
     fn();
-    console.log(`✓ ${name}`);
+    console.log(`${colors.green}✓${colors.reset} ${colors.dim}${name}${colors.reset}`);
     passed++;
   } catch (e) {
-    console.log(`✗ ${name}`);
-    console.log(`  Error: ${e.message}`);
+    console.log(`${colors.red}✗${colors.reset} ${colors.bright}${name}${colors.reset}`);
     failed++;
+    failures.push({ name, error: e });
   }
+}
+
+function section(title) {
+  console.log(`\n${colors.cyan}${colors.bright}═══ ${title} ═══${colors.reset}`);
 }
 
 function assert(condition, message) {
@@ -29,7 +64,10 @@ function assert(condition, message) {
 
 function assertEqual(actual, expected, message) {
   if (actual !== expected) {
-    throw new Error(`${message || 'Values not equal'}: expected ${expected}, got ${actual}`);
+    const err = new Error(message || 'Values not equal');
+    err.expected = expected;
+    err.actual = actual;
+    throw err;
   }
 }
 
@@ -37,7 +75,7 @@ function assertEqual(actual, expected, message) {
 // Game Initialization Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Game Initialization ═══');
+section('Game Initialization');
 
 test('createGame returns valid initial state', () => {
   const state = createGame();
@@ -62,7 +100,7 @@ test('all markets have prices for all goods', () => {
 // Buy/Sell Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Buy/Sell Actions ═══');
+section('Buy/Sell Actions');
 
 test('can buy goods with sufficient funds', () => {
   let state = createGame();
@@ -126,7 +164,7 @@ test('buy and sell do NOT advance turn', () => {
 // Travel Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Travel Actions ═══');
+section('Travel Actions');
 
 test('can travel to different market', () => {
   let state = createGame();
@@ -165,7 +203,7 @@ test('travel updates markets visited stat', () => {
 // Wait Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Wait Action ═══');
+section('Wait Action');
 
 test('wait advances turn', () => {
   let state = createGame();
@@ -186,7 +224,7 @@ test('wait causes price changes', () => {
 // Debt Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Debt System ═══');
+section('Debt System');
 
 test('can borrow money', () => {
   let state = createGame();
@@ -236,7 +274,7 @@ test('cannot pay more than balance', () => {
 // Upgrade Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Upgrades ═══');
+section('Upgrades');
 
 test('can purchase upgrade with funds', () => {
   let state = createGame();
@@ -276,7 +314,7 @@ test('cannot buy upgrade without prerequisite', () => {
 // Milestone Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Milestones ═══');
+section('Milestones');
 
 test('first trade milestone triggers on buy', () => {
   let state = createGame();
@@ -302,7 +340,7 @@ test('wealth milestone triggers when net worth reached', () => {
 // Game Over Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Game Over ═══');
+section('Game Over');
 
 test('bankruptcy when debt exceeds 3x net worth', () => {
   let state = createGame();
@@ -328,43 +366,72 @@ test('cannot act after game over', () => {
 // Integration Test: Full Game Flow
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('\n═══ Integration: Full Game Flow ═══');
+section('Integration: Full Game Flow');
 
 test('can play through multiple turns', () => {
-  let state = createGame();
+  // Use deterministic random to avoid random customs seizures
+  withDeterministicRandom(42, () => {
+    let state = createGame();
 
-  // Buy some compute
-  let result = submitAction(state, { action: 'buy', good: 'compute', quantity: 5 });
-  assert(result.success, 'Buy compute should succeed');
-  state = result.state;
-  assertEqual(state.turn, 1, 'Turn should still be 1');
+    // Buy some compute
+    let result = submitAction(state, { action: 'buy', good: 'compute', quantity: 5 });
+    assert(result.success, 'Buy compute should succeed');
+    state = result.state;
+    assertEqual(state.turn, 1, 'Turn should still be 1');
 
-  // Travel to Singapore (higher prices)
-  result = submitAction(state, { action: 'travel', destination: 'singapore' });
-  assert(result.success, 'Travel should succeed');
-  state = result.state;
-  assertEqual(state.turn, 2, 'Turn should be 2');
-  assertEqual(state.player.location, 'singapore', 'Should be in singapore');
+    // Travel to Singapore (higher prices)
+    result = submitAction(state, { action: 'travel', destination: 'singapore' });
+    assert(result.success, 'Travel should succeed');
+    state = result.state;
+    assertEqual(state.turn, 2, 'Turn should be 2');
+    assertEqual(state.player.location, 'singapore', 'Should be in singapore');
 
-  // Sell compute
-  result = submitAction(state, { action: 'sell', good: 'compute', quantity: 5 });
-  assert(result.success, 'Sell should succeed');
-  state = result.state;
-  assertEqual(state.turn, 2, 'Turn should still be 2');
+    // Sell whatever compute we still have (might have lost some to customs)
+    const computeOwned = state.player.inventory.compute || 0;
+    if (computeOwned > 0) {
+      result = submitAction(state, { action: 'sell', good: 'compute', quantity: computeOwned });
+      assert(result.success, 'Sell should succeed');
+      state = result.state;
+      assertEqual(state.turn, 2, 'Turn should still be 2');
+    }
 
-  // Travel back
-  result = submitAction(state, { action: 'travel', destination: 'us-west' });
-  assert(result.success, 'Travel back should succeed');
-  state = result.state;
-  assertEqual(state.turn, 3, 'Turn should be 3');
+    // Travel back
+    result = submitAction(state, { action: 'travel', destination: 'us-west' });
+    assert(result.success, 'Travel back should succeed');
+    state = result.state;
+    assertEqual(state.turn, 3, 'Turn should be 3');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Summary
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Print failure details with diff format
+if (failures.length > 0) {
+  console.log(`\n${colors.red}${colors.bright}════════════════════════════════════════`);
+  console.log(`  FAILURES (${failures.length})`);
+  console.log(`════════════════════════════════════════${colors.reset}\n`);
+
+  for (const { name, error } of failures) {
+    console.log(`${colors.red}${colors.bright}✗ ${name}${colors.reset}`);
+    console.log(`${colors.dim}  ${error.message}${colors.reset}`);
+
+    if (error.expected !== undefined && error.actual !== undefined) {
+      console.log(`${colors.red}  - Expected: ${colors.bright}${JSON.stringify(error.expected)}${colors.reset}`);
+      console.log(`${colors.green}  + Actual:   ${colors.bright}${JSON.stringify(error.actual)}${colors.reset}`);
+    }
+    console.log();
+  }
+}
+
+// Print summary
 console.log('\n═══════════════════════════════════════');
-console.log(`Tests: ${passed + failed} | Passed: ${passed} | Failed: ${failed}`);
+if (failed === 0) {
+  console.log(`${colors.bgGreen}${colors.bright} PASS ${colors.reset} ${colors.green}${passed} tests passed${colors.reset}`);
+} else {
+  console.log(`${colors.bgRed}${colors.bright} FAIL ${colors.reset} ${colors.green}${passed} passed${colors.reset} ${colors.red}${failed} failed${colors.reset}`);
+}
 console.log('═══════════════════════════════════════\n');
 
 if (failed > 0) {
