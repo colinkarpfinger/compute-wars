@@ -427,6 +427,57 @@ test('bankruptcy when debt exceeds 3x net worth', () => {
   assertEqual(result.state.gameOverReason, 'bankruptcy', 'Reason should be bankruptcy');
 });
 
+test('inventory value prevents bankruptcy', () => {
+  // Use deterministic random to avoid price fluctuations affecting the test
+  withDeterministicRandom(123, () => {
+    let state = createGame();
+    const market = state.markets[state.player.location];
+
+    // Give player valuable inventory
+    state.player.balance = 10000;
+    state.player.inventory = { h100: 5 }; // 5 H100s
+    state.player.costBasis = { h100: 150000 };
+
+    // Calculate what inventory is worth
+    const inventoryValue = market.prices.h100 * 5;
+    const totalAssets = state.player.balance + inventoryValue;
+
+    // Set debt to 50% of total assets (well below bankruptcy threshold)
+    // Bankruptcy triggers when debt > 3 * netWorth
+    // netWorth = totalAssets - debt
+    // So debt > 3 * (totalAssets - debt) => debt > 0.75 * totalAssets
+    state.player.debt = Math.floor(totalAssets * 0.5); // 50% of assets, safely below 75%
+
+    const expectedNetWorth = totalAssets - state.player.debt;
+
+    const result = submitAction(state, { action: 'wait' });
+
+    assert(!result.state.gameOver, `Should NOT be bankrupt. Debt: ${state.player.debt}, Expected net worth: ${expectedNetWorth}`);
+  });
+});
+
+test('bankruptcy triggers when debt exceeds threshold even with inventory', () => {
+  withDeterministicRandom(456, () => {
+    let state = createGame();
+    const market = state.markets[state.player.location];
+
+    // Set up: some balance and inventory
+    state.player.balance = 10000;
+    state.player.inventory = { h100: 2 };
+    state.player.costBasis = { h100: 60000 };
+    const inventoryValue = market.prices.h100 * 2;
+    const totalAssets = state.player.balance + inventoryValue;
+
+    // Set debt to 80% of total assets (above 75% threshold)
+    state.player.debt = Math.floor(totalAssets * 0.8);
+
+    const result = submitAction(state, { action: 'wait' });
+
+    assert(result.state.gameOver, `Should be bankrupt. Debt: ${state.player.debt}, Total assets: ${totalAssets}`);
+    assertEqual(result.state.gameOverReason, 'bankruptcy', 'Reason should be bankruptcy');
+  });
+});
+
 test('cannot act after game over', () => {
   let state = createGame();
   state.gameOver = true;
