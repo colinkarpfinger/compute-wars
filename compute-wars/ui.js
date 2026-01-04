@@ -277,6 +277,9 @@ function renderActionBar() {
       <div class="action-group">
         <button class="btn btn-save" id="btn-save">SAVE</button>
         <button class="btn btn-load" id="btn-load">LOAD</button>
+        <button class="btn btn-export" id="btn-export">EXPORT</button>
+        <button class="btn btn-import" id="btn-import">IMPORT</button>
+        <input type="file" id="import-file" accept=".json" style="display: none;">
       </div>
     </div>
   `;
@@ -614,6 +617,17 @@ function attachEvents() {
 
   // Load button
   document.getElementById('btn-load')?.addEventListener('click', loadGame);
+
+  // Export button
+  document.getElementById('btn-export')?.addEventListener('click', exportGame);
+
+  // Import button
+  document.getElementById('btn-import')?.addEventListener('click', () => {
+    document.getElementById('import-file')?.click();
+  });
+
+  // Import file handler
+  document.getElementById('import-file')?.addEventListener('change', importGame);
 }
 
 function showModal(html) {
@@ -832,6 +846,58 @@ function loadGame() {
     addLogEntry('error', 'Failed to load save.');
     render();
   }
+}
+
+function exportGame() {
+  const saveData = {
+    version: '1.0',
+    state: gameState,
+    eventLog,
+    savedAt: new Date().toISOString()
+  };
+
+  const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `compute-wars-save-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  addLogEntry('neutral', 'Game exported to file.');
+  render();
+}
+
+function importGame(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const saveData = JSON.parse(e.target.result);
+
+      if (!saveData.state || !saveData.version) {
+        addLogEntry('error', 'Invalid save file format.');
+        render();
+        return;
+      }
+
+      gameState = saveData.state;
+      eventLog = saveData.eventLog || [];
+      addLogEntry('neutral', `Game imported from file (saved ${saveData.savedAt || 'unknown'}).`);
+      render();
+    } catch (err) {
+      addLogEntry('error', 'Failed to parse save file.');
+      render();
+    }
+  };
+  reader.readAsText(file);
+
+  // Reset the input so the same file can be imported again
+  event.target.value = '';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
