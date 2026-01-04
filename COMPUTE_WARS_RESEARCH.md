@@ -1,4 +1,4 @@
-# AI Wars - Research & Design Discussion
+# Compute Wars - Research & Design Discussion
 
 ## Project Goals
 
@@ -10,7 +10,7 @@ Build a game that is **well-suited for LLM development**:
 
 ## Game Concept
 
-**AI Wars** - A trading/arbitrage simulation game inspired by the classic "Drug Wars" formula, themed around the AI industry.
+**Compute Wars** - A trading/arbitrage simulation game inspired by the classic "Drug Wars" formula, themed around the AI industry.
 
 Core loop: Buy low, sell high across different markets. Manage risk, respond to random events, maximize wealth within a time limit.
 
@@ -145,7 +145,7 @@ Game takes structured input, returns structured output:
 **For the game:**
 - Engine is pure logic, zero UI coupling
 - Add any frontend later (web, CLI, Discord bot)
-- Multiple LLMs could compete (on-theme for "AI Wars")
+- Multiple LLMs could compete (on-theme for "Compute Wars")
 - Players could write their own bots
 
 **For scope:**

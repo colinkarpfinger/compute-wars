@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// AI WARS - User Interface
+// COMPUTE WARS - User Interface
 // DOM rendering and event handling
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -67,7 +67,7 @@ function renderHeader() {
   return `
     <div class="header">
       <div class="header-title">
-        <span class="title-text">AI WARS</span>
+        <span class="title-text">COMPUTE WARS</span>
         <span class="subtitle">Trade · Profit · Survive</span>
       </div>
       <div class="header-stats">

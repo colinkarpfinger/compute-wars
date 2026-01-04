@@ -1,17 +1,18 @@
-# AI Wars
+# Compute Wars
 
-A Drug Wars-style trading game with an AI industry theme, built for LLM development experimentation.
+A Drug Wars-style trading game with an AI/compute industry theme, built for LLM development experimentation.
 
 ## Quick Context
 
 - **Game**: Buy/sell AI commodities (GPUs, compute, datasets, talent) across global markets
 - **Architecture**: Headless JSON engine + browser UI
 - **Goal**: A game format that LLMs can easily build, modify, and test
+- **Domain**: computewars.io
 
 ## Key Files
 
 ```
-ai-wars/
+compute-wars/
 ├── index.html    # Browser UI (terminal aesthetic)
 ├── engine.js     # Pure game logic - JSON input/output
 ├── ui.js         # DOM rendering
@@ -20,13 +21,13 @@ ai-wars/
 
 ## Documentation
 
-- `AI_WARS_SPEC.md` - Full game specification (mechanics, schema, events, UI)
-- `AI_WARS_RESEARCH.md` - Design research and decisions
+- `COMPUTE_WARS_SPEC.md` - Full game specification (mechanics, schema, events, UI)
+- `COMPUTE_WARS_RESEARCH.md` - Design research and decisions
 
 ## Running
 
 ```bash
-cd ai-wars && python3 -m http.server 8080
+cd compute-wars && python3 -m http.server 8080
 # Open http://localhost:8080
 ```
 

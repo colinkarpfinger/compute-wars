@@ -1,8 +1,8 @@
-# AI Wars - Game Specification
+# Compute Wars - Game Specification
 
 ## Overview
 
-**AI Wars** is an arbitrage trading simulation where players buy and sell AI-related commodities across global markets. The game uses a JSON-based interface, making it playable by humans or automated agents.
+**Compute Wars** is an arbitrage trading simulation where players buy and sell AI-related commodities across global markets. The game uses a JSON-based interface, making it playable by humans or automated agents.
 
 **Core Loop:** Buy low in one market, travel, sell high in another. Manage inventory, respond to events, avoid risks, grow wealth.
 
@@ -426,7 +426,7 @@ A single-page browser UI that wraps the JSON game engine. Minimal, functional, i
 
 ```
 +----------------------------------------------------------+
-|  AI WARS                          Turn: 42    Net Worth: $1.2M  |
+|  COMPUTE WARS                          Turn: 42    Net Worth: $1.2M  |
 +----------------------------------------------------------+
 |                    |                                      |
 |  PLAYER STATUS     |  MARKET: US West Coast               |
@@ -794,7 +794,7 @@ The JSON interface allows:
 ### File Structure
 
 ```
-ai-wars/
+compute-wars/
 ├── index.html      # Single-page UI
 ├── engine.js       # Game engine (pure logic, no DOM)
 ├── ui.js           # UI rendering and event handling
