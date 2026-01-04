@@ -322,12 +322,18 @@ function renderBuySellModal(action, goodId) {
   const maxCapacity = gameState.player.inventoryCapacity - calculateInventoryUsed(gameState.player.inventory);
   const maxQuantity = isBuy ? Math.min(maxAfford, maxCapacity) : owned;
 
+  // Cost basis info for sell modal
+  const avgCost = !isBuy ? calculateAverageCost(goodId, gameState.player) : 0;
+  const profitPerUnit = price - avgCost;
+  const profitClass = profitPerUnit >= 0 ? 'positive' : 'negative';
+  const profitSign = profitPerUnit >= 0 ? '+' : '';
+
   return renderModal(`
     <div class="modal-header">${isBuy ? 'BUY' : 'SELL'} ${good.name}</div>
     <div class="modal-divider">────────────────────────</div>
     <div class="modal-content">
       <div class="modal-row">
-        <span>Price:</span>
+        <span>Market Price:</span>
         <span class="${getPriceClass(price, goodId)}">${formatMoneyFull(price)} each</span>
       </div>
       ${isBuy ? `
@@ -341,19 +347,34 @@ function renderBuySellModal(action, goodId) {
         </div>
       ` : `
         <div class="modal-row">
+          <span>Your Avg Cost:</span>
+          <span>${formatMoneyFull(avgCost)} each</span>
+        </div>
+        <div class="modal-row">
+          <span>P&L per unit:</span>
+          <span class="${profitClass}">${profitSign}${formatMoneyFull(profitPerUnit)}</span>
+        </div>
+        <div class="modal-row">
           <span>You own:</span>
           <span>${owned}</span>
         </div>
       `}
       <div class="modal-input-row">
         <label>Quantity:</label>
-        <input type="number" id="modal-quantity" value="1" min="1" max="${maxQuantity}">
+        <input type="number" id="modal-quantity" value="1" min="1" max="${maxQuantity}"
+               data-avg-cost="${avgCost}" data-is-buy="${isBuy}">
         <button class="btn btn-small" id="btn-max">MAX</button>
       </div>
       <div class="modal-row">
         <span>Total:</span>
         <span id="modal-total" class="${isBuy ? 'negative' : 'positive'}">${formatMoneyFull(price)}</span>
       </div>
+      ${!isBuy ? `
+        <div class="modal-row">
+          <span>Net Profit:</span>
+          <span id="modal-profit" class="${profitClass}">${profitSign}${formatMoneyFull(profitPerUnit)}</span>
+        </div>
+      ` : ''}
     </div>
     <div class="modal-actions">
       <button class="btn btn-cancel" id="btn-modal-cancel">CANCEL</button>
@@ -663,11 +684,22 @@ function attachModalEvents(action, goodId) {
 
   const quantityInput = document.getElementById('modal-quantity');
   const totalDisplay = document.getElementById('modal-total');
+  const profitDisplay = document.getElementById('modal-profit');
+  const avgCost = parseFloat(quantityInput?.dataset.avgCost) || 0;
+  const isBuy = quantityInput?.dataset.isBuy === 'true';
 
-  // Update total on quantity change
+  // Update total (and profit for sell) on quantity change
   quantityInput?.addEventListener('input', () => {
     const qty = parseInt(quantityInput.value) || 0;
     totalDisplay.textContent = formatMoneyFull(price * qty);
+
+    // Update net profit for sell transactions
+    if (!isBuy && profitDisplay) {
+      const netProfit = (price - avgCost) * qty;
+      const sign = netProfit >= 0 ? '+' : '';
+      profitDisplay.textContent = sign + formatMoneyFull(netProfit);
+      profitDisplay.className = netProfit >= 0 ? 'positive' : 'negative';
+    }
   });
 
   // Max button
