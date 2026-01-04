@@ -55,15 +55,22 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-function renderSparkline(prices, goodId) {
-  const width = 60;
+function renderSparkline(prices, goodId, hasDiscount = false, hasPremium = false) {
+  const width = 70; // Wider to fit indicator
   const height = 20;
   const padding = 2;
 
   if (!prices || prices.length < 2) {
     // Show flat line placeholder
+    let indicator = '';
+    if (hasDiscount) {
+      indicator = `<polygon points="62,10 68,6 68,14" fill="#4f4"/>`;
+    } else if (hasPremium) {
+      indicator = `<polygon points="62,10 68,6 68,14" fill="#0ff"/>`;
+    }
     return `<svg class="sparkline" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <line x1="${padding}" y1="${height/2}" x2="${width-padding}" y2="${height/2}" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+      <line x1="${padding}" y1="${height/2}" x2="${width-padding-10}" y2="${height/2}" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+      ${indicator}
     </svg>`;
   }
 
@@ -74,9 +81,10 @@ function renderSparkline(prices, goodId) {
 
   const displayPrices = prices.slice(-8);
 
-  // Build SVG path points
+  // Build SVG path points (leave room for indicator)
+  const chartWidth = width - 12;
   const points = displayPrices.map((price, i) => {
-    const x = padding + (i / (displayPrices.length - 1)) * (width - padding * 2);
+    const x = padding + (i / (displayPrices.length - 1)) * (chartWidth - padding * 2);
     const normalized = Math.max(0, Math.min(1, (price - min) / (max - min)));
     const y = height - padding - (normalized * (height - padding * 2));
     return `${x},${y}`;
@@ -89,8 +97,19 @@ function renderSparkline(prices, goodId) {
   if (last > first * 1.02) color = '#f44'; // up = bad for buyer (red)
   else if (last < first * 0.98) color = '#4f4'; // down = good for buyer (green)
 
+  // Add arrow indicator for active discount/premium
+  let indicator = '';
+  if (hasDiscount) {
+    // Green down arrow = good deal to buy
+    indicator = `<polygon points="62,14 66,6 70,14" fill="#4f4"><title>Buy discount active!</title></polygon>`;
+  } else if (hasPremium) {
+    // Cyan up arrow = good deal to sell
+    indicator = `<polygon points="62,6 66,14 70,6" fill="#0ff"><title>Sell premium active!</title></polygon>`;
+  }
+
   return `<svg class="sparkline" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${indicator}
   </svg>`;
 }
 
@@ -283,7 +302,7 @@ function renderMarketPanel() {
         <span class="good-name">${good.name}</span>
         <span class="good-price">${priceHtml}</span>
         <span class="good-supply ${supply}">${supplyData.icon}</span>
-        <span class="good-sparkline">${renderSparkline(priceHistory, goodId)}</span>
+        <span class="good-sparkline">${renderSparkline(priceHistory, goodId, buyInfo.discount > 0, sellInfo.premium > 0)}</span>
         <div class="good-actions">
           ${isRestricted
             ? '<span class="restricted-label">[RESTRICTED]</span>'
