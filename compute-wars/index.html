@@ -191,6 +191,83 @@
       margin-left: 5px;
     }
 
+    /* Bankruptcy Risk Indicator */
+    .bankruptcy-risk {
+      padding: 6px 0;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      margin: 4px 0;
+    }
+
+    .risk-indicator {
+      font-weight: bold;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 2px;
+      margin-right: 8px;
+    }
+
+    .risk-indicator.risk-safe {
+      color: var(--profit-green);
+      background: rgba(0, 255, 0, 0.1);
+      border: 1px solid var(--profit-green);
+    }
+
+    .risk-indicator.risk-moderate {
+      color: var(--highlight);
+      background: rgba(255, 255, 0, 0.1);
+      border: 1px solid var(--highlight);
+    }
+
+    .risk-indicator.risk-high {
+      color: var(--warning-amber);
+      background: rgba(255, 170, 0, 0.1);
+      border: 1px solid var(--warning-amber);
+    }
+
+    .risk-indicator.risk-critical {
+      color: var(--loss-red);
+      background: rgba(255, 68, 68, 0.2);
+      border: 1px solid var(--loss-red);
+      animation: pulse-danger 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-danger {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .risk-bar {
+      flex: 1;
+      height: 8px;
+      background: #1a1a1a;
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .risk-fill {
+      height: 100%;
+      display: block;
+      transition: width 0.3s ease;
+    }
+
+    .risk-fill.risk-safe {
+      background: var(--profit-green);
+    }
+
+    .risk-fill.risk-moderate {
+      background: var(--highlight);
+    }
+
+    .risk-fill.risk-high {
+      background: var(--warning-amber);
+    }
+
+    .risk-fill.risk-critical {
+      background: var(--loss-red);
+    }
+
     .inventory-list {
       margin-top: 5px;
     }

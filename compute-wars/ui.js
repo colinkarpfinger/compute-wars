@@ -96,9 +96,45 @@ function renderHeader() {
 function renderPlayerPanel() {
   const inventoryUsed = calculateInventoryUsed(gameState.player.inventory);
   const debtClass = gameState.player.debt > 0 ? 'negative' : '';
+  const market = gameState.markets[gameState.player.location];
+
+  // Calculate bankruptcy risk
+  const netWorth = calculateNetWorth(gameState);
+  const inventoryValue = Object.entries(gameState.player.inventory).reduce((sum, [goodId, qty]) => {
+    return sum + (market.prices[goodId] || 0) * qty;
+  }, 0);
+  const totalAssets = gameState.player.balance + inventoryValue;
+  const debt = gameState.player.debt;
+
+  // Bankruptcy triggers at debt > 75% of assets
+  // Risk = how close we are to that threshold
+  let riskPercent = 0;
+  let riskLevel = 'safe';
+  let riskClass = 'risk-safe';
+
+  if (debt > 0 && totalAssets > 0) {
+    const debtRatio = debt / totalAssets;
+    riskPercent = Math.round((debtRatio / 0.75) * 100); // % of way to bankruptcy
+
+    if (riskPercent >= 100) {
+      riskLevel = 'BANKRUPT';
+      riskClass = 'risk-critical';
+    } else if (riskPercent >= 85) {
+      riskLevel = 'CRITICAL';
+      riskClass = 'risk-critical';
+    } else if (riskPercent >= 65) {
+      riskLevel = 'HIGH';
+      riskClass = 'risk-high';
+    } else if (riskPercent >= 40) {
+      riskLevel = 'MODERATE';
+      riskClass = 'risk-moderate';
+    } else {
+      riskLevel = 'LOW';
+      riskClass = 'risk-safe';
+    }
+  }
 
   let inventoryHtml = '';
-  const market = gameState.markets[gameState.player.location];
   if (Object.keys(gameState.player.inventory).length === 0) {
     inventoryHtml = '<div class="empty-inventory">[ Empty ]</div>';
   } else {
@@ -138,6 +174,15 @@ function renderPlayerPanel() {
           <span class="value ${debtClass}">${formatMoneyFull(gameState.player.debt)}</span>
           ${gameState.player.debt > 0 ? `<span class="interest">(${(gameState.player.debtInterestRate * 100).toFixed(0)}%/turn)</span>` : ''}
         </div>
+        ${debt > 0 ? `
+        <div class="stat-row bankruptcy-risk">
+          <span class="label">Risk:</span>
+          <span class="risk-indicator ${riskClass}">${riskLevel}</span>
+          <span class="risk-bar">
+            <span class="risk-fill ${riskClass}" style="width: ${Math.min(100, riskPercent)}%"></span>
+          </span>
+        </div>
+        ` : ''}
         <div class="stat-row">
           <span class="label">Cargo:</span>
           <span class="value">${inventoryUsed}/${gameState.player.inventoryCapacity}</span>
