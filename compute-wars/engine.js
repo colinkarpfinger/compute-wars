@@ -540,12 +540,13 @@ function checkMilestones(state) {
 function checkGameOver(state) {
   const netWorth = calculateNetWorth(state);
 
-  // Bankruptcy: debt exceeds 3x net worth
-  if (state.player.debt > 0 && netWorth > 0 &&
-      state.player.debt > netWorth * CONFIG.bankruptcyMultiplier) {
-    state.gameOver = true;
-    state.gameOverReason = 'bankruptcy';
-    return true;
+  // Bankruptcy: debt exceeds 3x net worth (or net worth is negative with debt)
+  if (state.player.debt > 0) {
+    if (netWorth <= 0 || state.player.debt > netWorth * CONFIG.bankruptcyMultiplier) {
+      state.gameOver = true;
+      state.gameOverReason = 'bankruptcy';
+      return true;
+    }
   }
 
   // Destitution: no money, no inventory, can't borrow

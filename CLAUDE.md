@@ -27,9 +27,35 @@ compute-wars/
 ## Running
 
 ```bash
-cd compute-wars && python3 -m http.server 8080
+npm start
 # Open http://localhost:8080
 ```
+
+## Testing
+
+**Always run tests after making changes to the game logic:**
+
+```bash
+npm test
+```
+
+The test suite (28 tests) covers:
+- Game initialization
+- Buy/sell mechanics
+- Travel and turn advancement
+- Wait action
+- Debt system
+- Upgrades and prerequisites
+- Milestones
+- Game over conditions
+- Full game flow integration
+
+### Testing Workflow
+
+1. Make changes to engine.js or data.js
+2. Run `npm test` to verify nothing broke
+3. If adding new features, add corresponding tests to test.js
+4. All tests must pass before committing
 
 ## JSON API
 
