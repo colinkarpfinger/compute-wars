@@ -295,6 +295,20 @@ test('wait causes price changes', () => {
   assert(Object.keys(result.priceChanges).length > 0, 'Should have price changes');
 });
 
+test('handles old saves without priceHistory', () => {
+  let state = createGame();
+  // Simulate an old save by removing priceHistory from all markets
+  for (const marketId of Object.keys(state.markets)) {
+    delete state.markets[marketId].priceHistory;
+  }
+  // This should not crash
+  const result = submitAction(state, { action: 'wait' });
+  assert(result.success, 'Wait should succeed even without priceHistory');
+  // priceHistory should now be initialized
+  const market = result.state.markets[result.state.player.location];
+  assert(market.priceHistory, 'priceHistory should be initialized');
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Debt Tests
 // ─────────────────────────────────────────────────────────────────────────────
