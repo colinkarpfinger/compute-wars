@@ -2,7 +2,7 @@
 // COMPUTE WARS - Test Suite
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed } from './engine.js';
+import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed, createSaveData, validateSaveData, SAVE_VERSION } from './engine.js';
 import { GOODS, MARKETS } from './data.js';
 
 // ANSI color codes
@@ -360,6 +360,109 @@ test('cannot act after game over', () => {
   const result = submitAction(state, { action: 'wait' });
   assert(!result.success, 'Action should fail');
   assert(result.error.includes('Game is over'), 'Error should mention game over');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save Data Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+section('Save Data');
+
+test('createSaveData creates valid save structure', () => {
+  const state = createGame();
+  const eventLog = [{ type: 'test', message: 'Test event' }];
+  const saveData = createSaveData(state, eventLog);
+
+  assertEqual(saveData.version, SAVE_VERSION, 'Should have correct version');
+  assert(saveData.state === state, 'Should include state');
+  assert(saveData.eventLog === eventLog, 'Should include eventLog');
+  assert(typeof saveData.savedAt === 'string', 'Should have savedAt timestamp');
+  assert(saveData.savedAt.includes('T'), 'savedAt should be ISO format');
+});
+
+test('createSaveData works with empty eventLog', () => {
+  const state = createGame();
+  const saveData = createSaveData(state);
+
+  assert(Array.isArray(saveData.eventLog), 'eventLog should default to array');
+  assertEqual(saveData.eventLog.length, 0, 'eventLog should be empty');
+});
+
+test('validateSaveData accepts valid save', () => {
+  const state = createGame();
+  const saveData = createSaveData(state);
+  const result = validateSaveData(saveData);
+
+  assert(result.valid, 'Should be valid');
+  assertEqual(result.errors.length, 0, 'Should have no errors');
+});
+
+test('validateSaveData rejects null', () => {
+  const result = validateSaveData(null);
+  assert(!result.valid, 'Should be invalid');
+  assert(result.errors.includes('Save data must be an object'), 'Should have correct error');
+});
+
+test('validateSaveData rejects missing version', () => {
+  const state = createGame();
+  const saveData = { state };
+  const result = validateSaveData(saveData);
+
+  assert(!result.valid, 'Should be invalid');
+  assert(result.errors.includes('Missing version field'), 'Should report missing version');
+});
+
+test('validateSaveData rejects missing state', () => {
+  const saveData = { version: '1.0' };
+  const result = validateSaveData(saveData);
+
+  assert(!result.valid, 'Should be invalid');
+  assert(result.errors.includes('Missing state field'), 'Should report missing state');
+});
+
+test('validateSaveData rejects invalid player data', () => {
+  const saveData = {
+    version: '1.0',
+    state: {
+      player: { balance: 'not a number' },
+      markets: {},
+      turn: 1
+    }
+  };
+  const result = validateSaveData(saveData);
+
+  assert(!result.valid, 'Should be invalid');
+  assert(result.errors.some(e => e.includes('balance')), 'Should report balance error');
+});
+
+test('validateSaveData rejects missing markets', () => {
+  const saveData = {
+    version: '1.0',
+    state: {
+      player: { balance: 1000, location: 'us-west', inventory: {} },
+      turn: 1
+    }
+  };
+  const result = validateSaveData(saveData);
+
+  assert(!result.valid, 'Should be invalid');
+  assert(result.errors.some(e => e.includes('markets')), 'Should report markets error');
+});
+
+test('round-trip save/validate works', () => {
+  // Simulate a game with some actions
+  let state = createGame();
+  state = submitAction(state, { action: 'buy', good: 'compute', quantity: 3 }).state;
+  state = submitAction(state, { action: 'borrow', amount: 5000 }).state;
+
+  const saveData = createSaveData(state, [{ test: 'event' }]);
+  const jsonString = JSON.stringify(saveData);
+  const parsed = JSON.parse(jsonString);
+  const result = validateSaveData(parsed);
+
+  assert(result.valid, 'Round-tripped save should be valid');
+  assertEqual(parsed.state.player.inventory.compute, 3, 'State should preserve inventory');
+  assertEqual(parsed.state.player.debt, 5000, 'State should preserve debt');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

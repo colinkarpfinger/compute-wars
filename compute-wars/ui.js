@@ -10,7 +10,10 @@ import {
   calculateNetWorth,
   calculateInventoryUsed,
   getAvailableActions,
-  getMaxBorrowable
+  getMaxBorrowable,
+  createSaveData,
+  validateSaveData,
+  SAVE_VERSION
 } from './engine.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -815,12 +818,7 @@ function showMilestoneToast(milestone) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function saveGame(silent = false) {
-  const saveData = {
-    version: '1.0',
-    state: gameState,
-    eventLog,
-    savedAt: new Date().toISOString()
-  };
+  const saveData = createSaveData(gameState, eventLog);
   localStorage.setItem('aiWars_save', JSON.stringify(saveData));
   if (!silent) {
     addLogEntry('neutral', 'Game saved.');
@@ -838,6 +836,12 @@ function loadGame() {
 
   try {
     const saveData = JSON.parse(saved);
+    const validation = validateSaveData(saveData);
+    if (!validation.valid) {
+      addLogEntry('error', `Invalid save: ${validation.errors[0]}`);
+      render();
+      return;
+    }
     gameState = saveData.state;
     eventLog = saveData.eventLog || [];
     addLogEntry('neutral', 'Game loaded.');
@@ -849,12 +853,7 @@ function loadGame() {
 }
 
 function exportGame() {
-  const saveData = {
-    version: '1.0',
-    state: gameState,
-    eventLog,
-    savedAt: new Date().toISOString()
-  };
+  const saveData = createSaveData(gameState, eventLog);
 
   const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -878,9 +877,10 @@ function importGame(event) {
   reader.onload = (e) => {
     try {
       const saveData = JSON.parse(e.target.result);
+      const validation = validateSaveData(saveData);
 
-      if (!saveData.state || !saveData.version) {
-        addLogEntry('error', 'Invalid save file format.');
+      if (!validation.valid) {
+        addLogEntry('error', `Invalid save file: ${validation.errors[0]}`);
         render();
         return;
       }

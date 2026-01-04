@@ -883,6 +883,65 @@ export function createGame() {
   return createInitialState();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Save Data Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const SAVE_VERSION = '1.0';
+
+export function createSaveData(state, eventLog = []) {
+  return {
+    version: SAVE_VERSION,
+    state: state,
+    eventLog: eventLog,
+    savedAt: new Date().toISOString()
+  };
+}
+
+export function validateSaveData(saveData) {
+  const errors = [];
+
+  if (!saveData || typeof saveData !== 'object') {
+    return { valid: false, errors: ['Save data must be an object'] };
+  }
+
+  if (!saveData.version) {
+    errors.push('Missing version field');
+  }
+
+  if (!saveData.state) {
+    errors.push('Missing state field');
+  } else {
+    // Validate essential state properties
+    if (!saveData.state.player) {
+      errors.push('Missing player in state');
+    } else {
+      if (typeof saveData.state.player.balance !== 'number') {
+        errors.push('Invalid or missing player.balance');
+      }
+      if (typeof saveData.state.player.location !== 'string') {
+        errors.push('Invalid or missing player.location');
+      }
+      if (!saveData.state.player.inventory || typeof saveData.state.player.inventory !== 'object') {
+        errors.push('Invalid or missing player.inventory');
+      }
+    }
+
+    if (!saveData.state.markets || typeof saveData.state.markets !== 'object') {
+      errors.push('Invalid or missing markets');
+    }
+
+    if (typeof saveData.state.turn !== 'number') {
+      errors.push('Invalid or missing turn');
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
 export function submitAction(state, action) {
   return processAction(state, action);
 }
