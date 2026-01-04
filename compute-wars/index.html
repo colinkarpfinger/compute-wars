@@ -390,6 +390,7 @@
     .col-name, .good-name { width: 100px; }
     .col-price, .good-price { width: 120px; text-align: right; }
     .col-supply, .good-supply { width: 60px; text-align: center; font-size: 12px; }
+    .col-sparkline, .good-sparkline { width: 80px; text-align: center; }
     .col-actions, .good-actions { flex: 1; text-align: right; }
 
     .good-price.price-low { color: var(--profit-green); }
@@ -399,6 +400,12 @@
     .good-supply.surplus { color: var(--profit-green); }
     .good-supply.shortage { color: var(--loss-red); }
     .good-supply.normal { color: var(--text-muted); }
+
+    .sparkline { font-family: monospace; letter-spacing: -1px; font-size: 11px; }
+    .spark-up { color: var(--profit-green); }
+    .spark-down { color: var(--loss-red); }
+    .spark-neutral { color: var(--text-muted); }
+    .spark-empty { color: #333; }
 
     .restricted-label {
       color: var(--loss-red);

@@ -36,13 +36,17 @@ export function createInitialState() {
     const market = MARKETS[marketId];
     const prices = {};
     const supply = {};
+    const priceHistory = {};
 
     for (const goodId of Object.keys(GOODS)) {
       const good = GOODS[goodId];
       const modifier = market.priceModifiers[goodId] || 1.0;
       const basePrice = (good.baseMin + good.baseMax) / 2;
-      prices[goodId] = Math.round(basePrice * modifier);
+      const initialPrice = Math.round(basePrice * modifier);
+      prices[goodId] = initialPrice;
       supply[goodId] = 'normal';
+      // Initialize price history with starting price
+      priceHistory[goodId] = [initialPrice];
     }
 
     markets[marketId] = {
@@ -51,6 +55,7 @@ export function createInitialState() {
       subtitle: market.subtitle,
       prices,
       supply,
+      priceHistory,
       restricted: []
     };
   }
@@ -184,6 +189,15 @@ function updatePrices(state) {
 
       market.prices[goodId] = newPrice;
       priceChanges[marketId][goodId] = { old: oldPrice, new: newPrice };
+
+      // Record price history (keep last 8 prices)
+      if (!market.priceHistory[goodId]) {
+        market.priceHistory[goodId] = [];
+      }
+      market.priceHistory[goodId].push(newPrice);
+      if (market.priceHistory[goodId].length > 8) {
+        market.priceHistory[goodId].shift();
+      }
     }
 
     // Random supply level shifts

@@ -53,6 +53,50 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function renderSparkline(prices, goodId) {
+  // Unicode block characters for sparkline (8 levels)
+  const blocks = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+
+  if (!prices || prices.length === 0) {
+    return '<span class="sparkline">────────</span>';
+  }
+
+  // Get the base price range for this good to scale against
+  const good = GOODS[goodId];
+  const min = good.baseMin * 0.7;
+  const max = good.baseMax * 1.3;
+
+  // Build the sparkline
+  let sparkline = '';
+  const displayPrices = prices.slice(-8); // Last 8 prices
+
+  // Pad with empty spaces if less than 8 prices
+  const padding = 8 - displayPrices.length;
+  for (let i = 0; i < padding; i++) {
+    sparkline += '<span class="spark-empty">·</span>';
+  }
+
+  for (let i = 0; i < displayPrices.length; i++) {
+    const price = displayPrices[i];
+    // Scale price to 0-7 range
+    const normalized = Math.max(0, Math.min(1, (price - min) / (max - min)));
+    const level = Math.floor(normalized * 7);
+    const block = blocks[level];
+
+    // Color based on trend (compare to previous)
+    let colorClass = 'spark-neutral';
+    if (i > 0) {
+      const prev = displayPrices[i - 1];
+      if (price > prev * 1.02) colorClass = 'spark-up';
+      else if (price < prev * 0.98) colorClass = 'spark-down';
+    }
+
+    sparkline += `<span class="${colorClass}">${block}</span>`;
+  }
+
+  return `<span class="sparkline">${sparkline}</span>`;
+}
+
 function getPriceClass(price, good) {
   const goodData = GOODS[good];
   const avg = (goodData.baseMin + goodData.baseMax) / 2;
@@ -216,12 +260,15 @@ function renderMarketPanel() {
     const canAfford = gameState.player.balance >= price;
     const hasSpace = calculateInventoryUsed(gameState.player.inventory) < gameState.player.inventoryCapacity;
 
+    const priceHistory = market.priceHistory?.[goodId] || [];
+
     goodsHtml += `
       <div class="market-row ${isRestricted ? 'restricted' : ''}">
         <span class="good-icon">${good.icon}</span>
         <span class="good-name">${good.name}</span>
         <span class="good-price ${priceClass}">${formatMoneyFull(price)}</span>
         <span class="good-supply ${supply}">${supplyData.icon}</span>
+        <span class="good-sparkline">${renderSparkline(priceHistory, goodId)}</span>
         <div class="good-actions">
           ${isRestricted
             ? '<span class="restricted-label">[RESTRICTED]</span>'
@@ -253,6 +300,7 @@ function renderMarketPanel() {
           <span class="col-name">GOOD</span>
           <span class="col-price">PRICE</span>
           <span class="col-supply">SUPPLY</span>
+          <span class="col-sparkline">TREND</span>
           <span class="col-actions">ACTIONS</span>
         </div>
         ${goodsHtml}
