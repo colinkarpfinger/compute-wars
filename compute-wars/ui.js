@@ -12,6 +12,8 @@ import {
   calculateAverageCost,
   getAvailableActions,
   getMaxBorrowable,
+  getEffectiveBuyPrice,
+  getEffectiveSellPrice,
   createSaveData,
   validateSaveData,
   SAVE_VERSION
@@ -245,23 +247,41 @@ function renderMarketPanel() {
 
   let goodsHtml = '';
   for (const [goodId, good] of Object.entries(GOODS)) {
-    const price = market.prices[goodId];
+    const basePrice = market.prices[goodId];
     const supply = market.supply[goodId];
     const supplyData = SUPPLY_LEVELS[supply];
     const isRestricted = market.restricted.includes(goodId);
-    const priceClass = getPriceClass(price, goodId);
+
+    // Check for active discounts/premiums
+    const buyInfo = getEffectiveBuyPrice(gameState, goodId);
+    const sellInfo = getEffectiveSellPrice(gameState, goodId);
 
     const owned = gameState.player.inventory[goodId] || 0;
-    const canAfford = gameState.player.balance >= price;
+    const canAfford = gameState.player.balance >= buyInfo.price;
     const hasSpace = calculateInventoryUsed(gameState.player.inventory) < gameState.player.inventoryCapacity;
 
     const priceHistory = market.priceHistory?.[goodId] || [];
+
+    // Build price display with discount/premium indicators
+    let priceHtml;
+    if (buyInfo.discount > 0) {
+      priceHtml = `<span class="base-price strikethrough">${formatMoneyFull(basePrice)}</span>
+                   <span class="discount-price">${formatMoneyFull(buyInfo.price)}</span>
+                   <span class="discount-badge">-${buyInfo.discount}%</span>`;
+    } else if (sellInfo.premium > 0) {
+      priceHtml = `<span class="base-price strikethrough">${formatMoneyFull(basePrice)}</span>
+                   <span class="premium-price">${formatMoneyFull(sellInfo.price)}</span>
+                   <span class="premium-badge">+${sellInfo.premium}%</span>`;
+    } else {
+      const priceClass = getPriceClass(basePrice, goodId);
+      priceHtml = `<span class="${priceClass}">${formatMoneyFull(basePrice)}</span>`;
+    }
 
     goodsHtml += `
       <div class="market-row ${isRestricted ? 'restricted' : ''}">
         <span class="good-icon">${good.icon}</span>
         <span class="good-name">${good.name}</span>
-        <span class="good-price ${priceClass}">${formatMoneyFull(price)}</span>
+        <span class="good-price">${priceHtml}</span>
         <span class="good-supply ${supply}">${supplyData.icon}</span>
         <span class="good-sparkline">${renderSparkline(priceHistory, goodId)}</span>
         <div class="good-actions">
@@ -402,27 +422,45 @@ function renderModal(content) {
 function renderBuySellModal(action, goodId) {
   const good = GOODS[goodId];
   const market = gameState.markets[gameState.player.location];
-  const price = market.prices[goodId];
+  const basePrice = market.prices[goodId];
   const owned = gameState.player.inventory[goodId] || 0;
 
   const isBuy = action === 'buy';
-  const maxAfford = Math.floor(gameState.player.balance / price);
+
+  // Get effective price considering discounts/premiums
+  const buyInfo = getEffectiveBuyPrice(gameState, goodId);
+  const sellInfo = getEffectiveSellPrice(gameState, goodId);
+  const effectivePrice = isBuy ? buyInfo.price : sellInfo.price;
+  const hasDiscount = isBuy && buyInfo.discount > 0;
+  const hasPremium = !isBuy && sellInfo.premium > 0;
+
+  const maxAfford = Math.floor(gameState.player.balance / effectivePrice);
   const maxCapacity = gameState.player.inventoryCapacity - calculateInventoryUsed(gameState.player.inventory);
   const maxQuantity = isBuy ? Math.min(maxAfford, maxCapacity) : owned;
 
   // Cost basis info for sell modal
   const avgCost = !isBuy ? calculateAverageCost(goodId, gameState.player) : 0;
-  const profitPerUnit = price - avgCost;
+  const profitPerUnit = effectivePrice - avgCost;
   const profitClass = profitPerUnit >= 0 ? 'positive' : 'negative';
   const profitSign = profitPerUnit >= 0 ? '+' : '';
+
+  // Price display with discount/premium indicator
+  let priceDisplay;
+  if (hasDiscount) {
+    priceDisplay = `<span class="strikethrough">${formatMoneyFull(basePrice)}</span> <span class="discount-price">${formatMoneyFull(effectivePrice)}</span> <span class="discount-badge">-${buyInfo.discount}%</span>`;
+  } else if (hasPremium) {
+    priceDisplay = `<span class="strikethrough">${formatMoneyFull(basePrice)}</span> <span class="premium-price">${formatMoneyFull(effectivePrice)}</span> <span class="premium-badge">+${sellInfo.premium}%</span>`;
+  } else {
+    priceDisplay = `<span class="${getPriceClass(basePrice, goodId)}">${formatMoneyFull(effectivePrice)} each</span>`;
+  }
 
   return renderModal(`
     <div class="modal-header">${isBuy ? 'BUY' : 'SELL'} ${good.name}</div>
     <div class="modal-divider">────────────────────────</div>
     <div class="modal-content">
       <div class="modal-row">
-        <span>Market Price:</span>
-        <span class="${getPriceClass(price, goodId)}">${formatMoneyFull(price)} each</span>
+        <span>${hasDiscount || hasPremium ? 'Special Price:' : 'Market Price:'}</span>
+        ${priceDisplay}
       </div>
       ${isBuy ? `
         <div class="modal-row">
@@ -450,12 +488,12 @@ function renderBuySellModal(action, goodId) {
       <div class="modal-input-row">
         <label>Quantity:</label>
         <input type="number" id="modal-quantity" value="1" min="1" max="${maxQuantity}"
-               data-avg-cost="${avgCost}" data-is-buy="${isBuy}">
+               data-avg-cost="${avgCost}" data-is-buy="${isBuy}" data-price="${effectivePrice}">
         <button class="btn btn-small" id="btn-max">MAX</button>
       </div>
       <div class="modal-row">
         <span>Total:</span>
-        <span id="modal-total" class="${isBuy ? 'negative' : 'positive'}">${formatMoneyFull(price)}</span>
+        <span id="modal-total" class="${isBuy ? 'negative' : 'positive'}">${formatMoneyFull(effectivePrice)}</span>
       </div>
       ${!isBuy ? `
         <div class="modal-row">
@@ -767,14 +805,13 @@ function closeModal() {
 }
 
 function attachModalEvents(action, goodId) {
-  const market = gameState.markets[gameState.player.location];
-  const price = market.prices[goodId];
-
   const quantityInput = document.getElementById('modal-quantity');
   const totalDisplay = document.getElementById('modal-total');
   const profitDisplay = document.getElementById('modal-profit');
   const avgCost = parseFloat(quantityInput?.dataset.avgCost) || 0;
   const isBuy = quantityInput?.dataset.isBuy === 'true';
+  // Use effective price from data attribute (includes discounts/premiums)
+  const price = parseFloat(quantityInput?.dataset.price) || 0;
 
   // Update total (and profit for sell) on quantity change
   quantityInput?.addEventListener('input', () => {

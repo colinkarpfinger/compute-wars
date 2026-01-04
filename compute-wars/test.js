@@ -2,7 +2,7 @@
 // COMPUTE WARS - Test Suite
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed, calculateAverageCost, createSaveData, validateSaveData, SAVE_VERSION } from './engine.js';
+import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed, calculateAverageCost, getEffectiveBuyPrice, getEffectiveSellPrice, createSaveData, validateSaveData, SAVE_VERSION } from './engine.js';
 import { GOODS, MARKETS } from './data.js';
 
 // ANSI color codes
@@ -233,6 +233,43 @@ test('average cost after partial sell remains same', () => {
   const result = submitAction(state, { action: 'sell', good: 'compute', quantity: 2 });
   const avgAfter = calculateAverageCost('compute', result.state.player);
   assertEqual(avgAfter, 1000, 'Average cost should remain 1000 after partial sell');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Effective Price Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+section('Effective Prices');
+
+test('getEffectiveBuyPrice returns base price without discount', () => {
+  let state = createGame();
+  const result = getEffectiveBuyPrice(state, 'compute');
+  const basePrice = state.markets[state.player.location].prices.compute;
+  assertEqual(result.price, basePrice, 'Price should equal base price');
+  assertEqual(result.discount, 0, 'Discount should be 0');
+});
+
+test('getEffectiveBuyPrice applies discount from pending event', () => {
+  let state = createGame();
+  const basePrice = state.markets[state.player.location].prices.compute;
+  // Simulate a discount event
+  state.pendingEvents = [{ effect: 'discount_buy', good: 'compute', percent: 40 }];
+
+  const result = getEffectiveBuyPrice(state, 'compute');
+  assertEqual(result.discount, 40, 'Discount should be 40%');
+  assertEqual(result.price, Math.round(basePrice * 0.6), 'Price should be 60% of base');
+  assertEqual(result.basePrice, basePrice, 'Base price should be preserved');
+});
+
+test('getEffectiveSellPrice applies premium from pending event', () => {
+  let state = createGame();
+  const basePrice = state.markets[state.player.location].prices.compute;
+  // Simulate a premium event
+  state.pendingEvents = [{ effect: 'premium_sell', good: 'compute', percent: 30 }];
+
+  const result = getEffectiveSellPrice(state, 'compute');
+  assertEqual(result.premium, 30, 'Premium should be 30%');
+  assertEqual(result.price, Math.round(basePrice * 1.3), 'Price should be 130% of base');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

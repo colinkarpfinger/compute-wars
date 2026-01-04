@@ -1,0 +1,808 @@
+{
+  "version": "1.0",
+  "state": {
+    "player": {
+      "balance": 274675,
+      "debt": 0,
+      "debtInterestRate": 0.08,
+      "location": "eu-central",
+      "inventory": {
+        "talent": 10
+      },
+      "costBasis": {
+        "talent": 587312
+      },
+      "inventoryCapacity": 15,
+      "reputation": 65
+    },
+    "markets": {
+      "us-west": {
+        "id": "us-west",
+        "name": "US West Coast",
+        "subtitle": "Silicon Valley · High Regulations",
+        "prices": {
+          "h100": 30614,
+          "h200": 47738,
+          "b100": 73055,
+          "compute": 1216,
+          "datasets": 26080,
+          "talent": 84903
+        },
+        "supply": {
+          "h100": "surplus",
+          "h200": "normal",
+          "b100": "normal",
+          "compute": "normal",
+          "datasets": "surplus",
+          "talent": "normal"
+        },
+        "restricted": [],
+        "priceHistory": {
+          "h100": [
+            32501,
+            33180,
+            33999,
+            33055,
+            31973,
+            31513,
+            32525,
+            30614
+          ],
+          "h200": [
+            37365,
+            32410,
+            33296,
+            38923,
+            37073,
+            42583,
+            45166,
+            47738
+          ],
+          "b100": [
+            72436,
+            68525,
+            69735,
+            71729,
+            74047,
+            74256,
+            70792,
+            73055
+          ],
+          "compute": [
+            1559,
+            1771,
+            1599,
+            1554,
+            1428,
+            1389,
+            1283,
+            1216
+          ],
+          "datasets": [
+            31846,
+            31195,
+            30409,
+            28910,
+            29425,
+            27674,
+            27821,
+            26080
+          ],
+          "talent": [
+            92358,
+            88358,
+            88299,
+            85533,
+            87680,
+            83354,
+            81686,
+            84903
+          ]
+        }
+      },
+      "eu-central": {
+        "id": "eu-central",
+        "name": "EU Central",
+        "subtitle": "Frankfurt · GDPR Zone",
+        "prices": {
+          "h100": 28943,
+          "h200": 42986,
+          "b100": 52741,
+          "compute": 1549,
+          "datasets": 24940,
+          "talent": 84417
+        },
+        "supply": {
+          "h100": "surplus",
+          "h200": "shortage",
+          "b100": "normal",
+          "compute": "normal",
+          "datasets": "surplus",
+          "talent": "shortage"
+        },
+        "restricted": [],
+        "priceHistory": {
+          "h100": [
+            29687,
+            30284,
+            31018,
+            31388,
+            30935,
+            31471,
+            30091,
+            28943
+          ],
+          "h200": [
+            43860,
+            46070,
+            48284,
+            49634,
+            40939,
+            45866,
+            51052,
+            42986
+          ],
+          "b100": [
+            55831,
+            56859,
+            60958,
+            56268,
+            51745,
+            54993,
+            56207,
+            52741
+          ],
+          "compute": [
+            1761,
+            1600,
+            1697,
+            1779,
+            1815,
+            1833,
+            1678,
+            1549
+          ],
+          "datasets": [
+            25691,
+            25489,
+            25896,
+            24829,
+            25180,
+            25393,
+            25584,
+            24940
+          ],
+          "talent": [
+            89265,
+            87295,
+            88891,
+            77608,
+            81488,
+            91763,
+            83685,
+            84417
+          ]
+        }
+      },
+      "china-east": {
+        "id": "china-east",
+        "name": "China East",
+        "subtitle": "Shanghai · Export Controls",
+        "prices": {
+          "h100": 29858,
+          "h200": 27516,
+          "b100": 52571,
+          "compute": 1920,
+          "datasets": 29308,
+          "talent": 75047
+        },
+        "supply": {
+          "h100": "shortage",
+          "h200": "normal",
+          "b100": "shortage",
+          "compute": "shortage",
+          "datasets": "shortage",
+          "talent": "surplus"
+        },
+        "restricted": [
+          "h100"
+        ],
+        "priceHistory": {
+          "h100": [
+            27275,
+            25230,
+            23959,
+            22903,
+            26129,
+            23813,
+            28106,
+            29858
+          ],
+          "h200": [
+            30004,
+            30843,
+            28510,
+            26757,
+            26794,
+            25077,
+            24884,
+            27516
+          ],
+          "b100": [
+            50265,
+            45535,
+            41923,
+            38449,
+            45783,
+            52471,
+            54706,
+            52571
+          ],
+          "compute": [
+            1287,
+            1358,
+            1314,
+            1367,
+            1512,
+            1569,
+            1778,
+            1920
+          ],
+          "datasets": [
+            28650,
+            30022,
+            27565,
+            25618,
+            23513,
+            26697,
+            26816,
+            29308
+          ],
+          "talent": [
+            88560,
+            83086,
+            84032,
+            84240,
+            80623,
+            76350,
+            75093,
+            75047
+          ]
+        }
+      },
+      "singapore": {
+        "id": "singapore",
+        "name": "Singapore",
+        "subtitle": "Trading Hub · Low Restrictions",
+        "prices": {
+          "h100": 54903,
+          "h200": 39853,
+          "b100": 65181,
+          "compute": 1381,
+          "datasets": 22354,
+          "talent": 94727
+        },
+        "supply": {
+          "h100": "shortage",
+          "h200": "normal",
+          "b100": "surplus",
+          "compute": "normal",
+          "datasets": "shortage",
+          "talent": "normal"
+        },
+        "restricted": [],
+        "priceHistory": {
+          "h100": [
+            35892,
+            30528,
+            28446,
+            34947,
+            37742,
+            43780,
+            51490,
+            54903
+          ],
+          "h200": [
+            41564,
+            40454,
+            37259,
+            40826,
+            42734,
+            41612,
+            40899,
+            39853
+          ],
+          "b100": [
+            71129,
+            70355,
+            71211,
+            70862,
+            72367,
+            68334,
+            65134,
+            65181
+          ],
+          "compute": [
+            1411,
+            1408,
+            1317,
+            1424,
+            1312,
+            1313,
+            1281,
+            1381
+          ],
+          "datasets": [
+            21111,
+            20759,
+            21454,
+            20912,
+            23368,
+            23563,
+            22259,
+            22354
+          ],
+          "talent": [
+            100201,
+            102276,
+            105779,
+            104671,
+            104396,
+            96297,
+            96101,
+            94727
+          ]
+        }
+      }
+    },
+    "turn": 44,
+    "milestones": {
+      "seed_round": {
+        "id": "seed_round",
+        "name": "Seed Round",
+        "condition": {
+          "type": "net_worth",
+          "value": 100000
+        },
+        "reward": {
+          "type": "unlock_upgrade",
+          "value": "cargo_1"
+        },
+        "description": "Reach $100,000 net worth",
+        "achieved": true,
+        "achievedOnTurn": 24
+      },
+      "series_a": {
+        "id": "series_a",
+        "name": "Series A",
+        "condition": {
+          "type": "net_worth",
+          "value": 500000
+        },
+        "reward": {
+          "type": "unlock_upgrade",
+          "value": "insurance"
+        },
+        "description": "Reach $500,000 net worth",
+        "achieved": true,
+        "achievedOnTurn": 38
+      },
+      "series_b": {
+        "id": "series_b",
+        "name": "Series B",
+        "condition": {
+          "type": "net_worth",
+          "value": 1000000
+        },
+        "reward": {
+          "type": "unlock_upgrade",
+          "value": "reputation_2"
+        },
+        "description": "Reach $1,000,000 net worth",
+        "achieved": true,
+        "achievedOnTurn": 44
+      },
+      "unicorn": {
+        "id": "unicorn",
+        "name": "Unicorn",
+        "condition": {
+          "type": "net_worth",
+          "value": 10000000
+        },
+        "reward": {
+          "type": "achievement",
+          "value": "unicorn_badge"
+        },
+        "description": "Reach $10,000,000 net worth",
+        "achieved": false,
+        "achievedOnTurn": null
+      },
+      "decacorn": {
+        "id": "decacorn",
+        "name": "Decacorn",
+        "condition": {
+          "type": "net_worth",
+          "value": 100000000
+        },
+        "reward": {
+          "type": "achievement",
+          "value": "decacorn_badge"
+        },
+        "description": "Reach $100,000,000 net worth",
+        "achieved": false,
+        "achievedOnTurn": null
+      },
+      "first_trade": {
+        "id": "first_trade",
+        "name": "First Trade",
+        "condition": {
+          "type": "trades",
+          "value": 1
+        },
+        "reward": {
+          "type": "tutorial",
+          "value": "complete"
+        },
+        "description": "Complete your first buy or sell",
+        "achieved": true,
+        "achievedOnTurn": 1
+      },
+      "globetrotter": {
+        "id": "globetrotter",
+        "name": "Globetrotter",
+        "condition": {
+          "type": "markets_visited",
+          "value": 4
+        },
+        "reward": {
+          "type": "reputation",
+          "value": 5
+        },
+        "description": "Visit all 4 markets",
+        "achieved": true,
+        "achievedOnTurn": 11
+      },
+      "bulk_trader": {
+        "id": "bulk_trader",
+        "name": "Bulk Trader",
+        "condition": {
+          "type": "goods_traded",
+          "value": 100
+        },
+        "reward": {
+          "type": "unlock_upgrade",
+          "value": "cargo_2"
+        },
+        "description": "Trade 100 goods total",
+        "achieved": true,
+        "achievedOnTurn": 29
+      },
+      "survivor": {
+        "id": "survivor",
+        "name": "Survivor",
+        "condition": {
+          "type": "turns",
+          "value": 50
+        },
+        "reward": {
+          "type": "unlock_upgrade",
+          "value": "security"
+        },
+        "description": "Survive 50 turns",
+        "achieved": false,
+        "achievedOnTurn": null
+      },
+      "debt_free": {
+        "id": "debt_free",
+        "name": "Debt Free",
+        "condition": {
+          "type": "paid_off_debt",
+          "value": true
+        },
+        "reward": {
+          "type": "reputation",
+          "value": 10
+        },
+        "description": "Pay off all debt after borrowing",
+        "achieved": true,
+        "achievedOnTurn": 16
+      }
+    },
+    "unlockedUpgrades": [
+      "cargo_1",
+      "cargo_2",
+      "insurance",
+      "reputation_2"
+    ],
+    "purchasedUpgrades": [
+      "cargo_1"
+    ],
+    "pendingEvents": [
+      {
+        "id": "bulk_buyer_1767567087390",
+        "type": "opportunity",
+        "title": "Opportunity",
+        "description": "Bulk buyer seeking Datasets. Sell now for +45% premium!",
+        "effect": "premium_sell",
+        "good": "datasets",
+        "percent": 45
+      },
+      {
+        "id": "bulk_buyer_1767568213384",
+        "type": "opportunity",
+        "title": "Opportunity",
+        "description": "Desperate seller offloading Datasets. Buy at -48% discount!",
+        "effect": "discount_buy",
+        "good": "datasets",
+        "percent": 48
+      }
+    ],
+    "stats": {
+      "totalTrades": 51,
+      "goodsTraded": 238,
+      "marketsVisited": [
+        "us-west",
+        "eu-central",
+        "singapore",
+        "china-east"
+      ],
+      "hadDebt": true,
+      "peakNetWorth": 1118845
+    },
+    "gameOver": false,
+    "gameOverReason": null
+  },
+  "eventLog": [
+    {
+      "turn": 44,
+      "type": "action",
+      "text": "Used discount: -39%! Bought 8x Talent for $411,952. "
+    },
+    {
+      "turn": 44,
+      "type": "action",
+      "text": "Used premium: +20%! Sold 2x H200 for $103,166. "
+    },
+    {
+      "turn": 44,
+      "type": "positive",
+      "text": "Opportunity: Desperate seller offloading Talent. Buy at -39% discount!"
+    },
+    {
+      "turn": 44,
+      "type": "neutral",
+      "text": "Export Restrictions: Export ban lifted on H200. Trade freely again."
+    },
+    {
+      "turn": 44,
+      "type": "action",
+      "text": "Traveled to EU Central. Net worth: $838,267"
+    },
+    {
+      "turn": 43,
+      "type": "action",
+      "text": "Used premium: +32%! Sold 2x H100 for $135,934. "
+    },
+    {
+      "turn": 43,
+      "type": "positive",
+      "text": "Windfall: Investment returns arrived. +$$27,676!"
+    },
+    {
+      "turn": 43,
+      "type": "action",
+      "text": "Traveled to Singapore. Net worth: $824,507"
+    },
+    {
+      "turn": 42,
+      "type": "positive",
+      "text": "Opportunity: Bulk buyer seeking H100. Sell now for +32% premium!"
+    },
+    {
+      "turn": 42,
+      "type": "action",
+      "text": "Traveled to China East. Net worth: $670,331"
+    },
+    {
+      "turn": 41,
+      "type": "action",
+      "text": "Bought 2x H100 for $63,946. "
+    },
+    {
+      "turn": 41,
+      "type": "action",
+      "text": "Bought 2x H200 for $74,146. "
+    },
+    {
+      "turn": 41,
+      "type": "action",
+      "text": "Bought 2x Talent for $175,360. "
+    },
+    {
+      "turn": 41,
+      "type": "action",
+      "text": "Sold 7x B100 for $518,329. "
+    },
+    {
+      "turn": 41,
+      "type": "positive",
+      "text": "Opportunity: Bulk buyer seeking H200. Sell now for +20% premium!"
+    },
+    {
+      "turn": 41,
+      "type": "action",
+      "text": "Traveled to US West Coast. Net worth: $733,303"
+    },
+    {
+      "turn": 40,
+      "type": "action",
+      "text": "Paid $408,240 toward debt. "
+    },
+    {
+      "turn": 40,
+      "type": "action",
+      "text": "Sold 8x H200 for $397,072. "
+    },
+    {
+      "turn": 40,
+      "type": "positive",
+      "text": "Windfall: Old invoice finally paid. +$$30,358!"
+    },
+    {
+      "turn": 40,
+      "type": "action",
+      "text": "Traveled to EU Central. Debt interest: +$30,240. Net worth: $608,850"
+    },
+    {
+      "turn": 39,
+      "type": "action",
+      "text": "Bought 4x H200 for $133,184. "
+    },
+    {
+      "turn": 39,
+      "type": "action",
+      "text": "Borrowed $250,000. "
+    },
+    {
+      "turn": 39,
+      "type": "action",
+      "text": "Used discount: -43%! Bought 4x H200 for $75,916. "
+    },
+    {
+      "turn": 39,
+      "type": "action",
+      "text": "Paid $250,000 toward debt. "
+    },
+    {
+      "turn": 39,
+      "type": "action",
+      "text": "Sold 5x B100 for $348,675. "
+    },
+    {
+      "turn": 39,
+      "type": "positive",
+      "text": "Windfall: Old invoice finally paid. +$$37,191!"
+    },
+    {
+      "turn": 39,
+      "type": "positive",
+      "text": "Opportunity: Desperate seller offloading H200. Buy at -43% discount!"
+    },
+    {
+      "turn": 39,
+      "type": "action",
+      "text": "Traveled to US West Coast. Debt interest: +$28,000. Net worth: $515,029"
+    },
+    {
+      "turn": 38,
+      "type": "neutral",
+      "text": "Game exported to file."
+    },
+    {
+      "turn": 38,
+      "type": "action",
+      "text": "Bought 7x B100 for $492,485. "
+    },
+    {
+      "turn": 38,
+      "type": "action",
+      "text": "Borrowed $350,000. "
+    },
+    {
+      "turn": 38,
+      "type": "action",
+      "text": "Used discount: -44%! Bought 5x B100 for $196,995. "
+    },
+    {
+      "turn": 38,
+      "type": "action",
+      "text": "Sold 1x H200 for $40,454. "
+    },
+    {
+      "turn": 38,
+      "type": "action",
+      "text": "Used premium: +44%! Sold 2x Talent for $294,554. "
+    },
+    {
+      "turn": 38,
+      "type": "positive",
+      "text": "Opportunity: Desperate seller offloading B100. Buy at -44% discount!"
+    },
+    {
+      "turn": 38,
+      "type": "negative",
+      "text": "Tax Audit: Compliance review required. Operations slowed."
+    },
+    {
+      "turn": 38,
+      "type": "action",
+      "text": "Traveled to Singapore. Net worth: $268,496"
+    },
+    {
+      "turn": 37,
+      "type": "action",
+      "text": "Traveled to US West Coast. Net worth: $255,070"
+    },
+    {
+      "turn": 36,
+      "type": "action",
+      "text": "Bought 2x Talent for $177,268. "
+    },
+    {
+      "turn": 36,
+      "type": "action",
+      "text": "Sold 1x B100 for $51,217. "
+    },
+    {
+      "turn": 36,
+      "type": "action",
+      "text": "Bought 1x B100 for $51,217. "
+    },
+    {
+      "turn": 36,
+      "type": "action",
+      "text": "Sold 1x B100 for $51,217. "
+    },
+    {
+      "turn": 36,
+      "type": "action",
+      "text": "Traveled to EU Central. Net worth: $247,236"
+    },
+    {
+      "turn": 35,
+      "type": "action",
+      "text": "Used discount: -47%! Bought 1x B100 for $40,405. "
+    },
+    {
+      "turn": 35,
+      "type": "action",
+      "text": "Used premium: +23%! Sold 1x H100 for $45,285. "
+    },
+    {
+      "turn": 35,
+      "type": "action",
+      "text": "Sold 1x B100 for $76,236. "
+    },
+    {
+      "turn": 35,
+      "type": "positive",
+      "text": "Windfall: Old invoice finally paid. +$$23,051!"
+    },
+    {
+      "turn": 35,
+      "type": "positive",
+      "text": "Opportunity: Desperate seller offloading B100. Buy at -47% discount!"
+    },
+    {
+      "turn": 35,
+      "type": "action",
+      "text": "Traveled to US West Coast. Net worth: $227,189"
+    },
+    {
+      "turn": 34,
+      "type": "action",
+      "text": "Bought 1x B100 for $51,135. "
+    }
+  ],
+  "savedAt": "2026-01-04T23:30:16.095Z"
+}

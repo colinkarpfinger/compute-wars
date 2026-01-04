@@ -142,6 +142,46 @@ export function getDebtInterestRate(state) {
   return CONFIG.debtBaseInterestRate;
 }
 
+// Get effective buy price considering any active discount events
+export function getEffectiveBuyPrice(state, goodId) {
+  const market = state.markets[state.player.location];
+  const basePrice = market.prices[goodId];
+
+  const discountEvent = state.pendingEvents?.find(
+    e => e.effect === 'discount_buy' && e.good === goodId
+  );
+
+  if (discountEvent) {
+    return {
+      price: Math.round(basePrice * (1 - discountEvent.percent / 100)),
+      basePrice,
+      discount: discountEvent.percent
+    };
+  }
+
+  return { price: basePrice, basePrice, discount: 0 };
+}
+
+// Get effective sell price considering any active premium events
+export function getEffectiveSellPrice(state, goodId) {
+  const market = state.markets[state.player.location];
+  const basePrice = market.prices[goodId];
+
+  const premiumEvent = state.pendingEvents?.find(
+    e => e.effect === 'premium_sell' && e.good === goodId
+  );
+
+  if (premiumEvent) {
+    return {
+      price: Math.round(basePrice * (1 + premiumEvent.percent / 100)),
+      basePrice,
+      premium: premiumEvent.percent
+    };
+  }
+
+  return { price: basePrice, basePrice, premium: 0 };
+}
+
 export function getMaxBorrowable(state) {
   const netWorth = Math.max(0, calculateNetWorth(state));
   const maxDebt = netWorth * CONFIG.maxDebtMultiplier;

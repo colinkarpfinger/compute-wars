@@ -388,7 +388,7 @@
 
     .col-icon, .good-icon { width: 50px; color: var(--info-cyan); }
     .col-name, .good-name { width: 100px; }
-    .col-price, .good-price { width: 120px; text-align: right; }
+    .col-price, .good-price { width: 180px; text-align: right; }
     .col-supply, .good-supply { width: 60px; text-align: center; font-size: 12px; }
     .col-sparkline, .good-sparkline { width: 80px; text-align: center; }
     .col-actions, .good-actions { flex: 1; text-align: right; }
@@ -402,6 +402,30 @@
     .good-supply.normal { color: var(--text-muted); }
 
     .sparkline { vertical-align: middle; }
+
+    /* Discount/Premium styling */
+    .strikethrough { text-decoration: line-through; color: var(--text-muted); font-size: 11px; }
+    .discount-price { color: var(--profit-green); font-weight: bold; }
+    .premium-price { color: var(--profit-green); font-weight: bold; }
+    .discount-badge {
+      background: var(--profit-green);
+      color: #000;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-left: 4px;
+    }
+    .premium-badge {
+      background: var(--info-cyan);
+      color: #000;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-left: 4px;
+    }
+    .base-price { font-size: 11px; }
 
     .restricted-label {
       color: var(--loss-red);
