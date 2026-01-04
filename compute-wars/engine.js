@@ -191,6 +191,10 @@ function updatePrices(state) {
       priceChanges[marketId][goodId] = { old: oldPrice, new: newPrice };
 
       // Record price history (keep last 8 prices)
+      // Initialize priceHistory for saves from before this feature existed
+      if (!market.priceHistory) {
+        market.priceHistory = {};
+      }
       if (!market.priceHistory[goodId]) {
         market.priceHistory[goodId] = [];
       }
