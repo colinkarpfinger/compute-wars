@@ -828,45 +828,55 @@ export function processAction(state, action) {
       return response;
   }
 
-  // If action succeeded, advance the turn
+  // Determine if this action should advance the turn
+  // Only travel and wait advance the turn (classic Drug Wars style)
+  const turnAdvancingActions = ['travel', 'wait'];
+  const shouldAdvanceTurn = response.success && turnAdvancingActions.includes(action.action);
+
   if (response.success) {
-    // Apply debt interest
-    if (state.player.debt > 0) {
-      const interestRate = getDebtInterestRate(state);
-      const interest = Math.round(state.player.debt * interestRate);
-      state.player.debt += interest;
-      state.player.debtInterestRate = interestRate;
-      if (interest > 0) {
-        response.turnSummary += `Debt interest: +${formatMoney(interest)}. `;
-      }
-    }
-
-    // Roll for random events
-    const events = rollForEvents(state);
-    response.events.push(...events);
-    applyEvents(state, events);
-
-    // Update prices
-    response.priceChanges = updatePrices(state);
-
-    // Check milestones
+    // Always check milestones (even on non-turn-advancing actions)
     response.milestonesAchieved = checkMilestones(state);
 
-    // Check game over
-    checkGameOver(state);
+    if (shouldAdvanceTurn) {
+      // Apply debt interest
+      if (state.player.debt > 0) {
+        const interestRate = getDebtInterestRate(state);
+        const interest = Math.round(state.player.debt * interestRate);
+        state.player.debt += interest;
+        state.player.debtInterestRate = interestRate;
+        if (interest > 0) {
+          response.turnSummary += `Debt interest: +${formatMoney(interest)}. `;
+        }
+      }
 
-    // Advance turn
-    state.turn++;
+      // Roll for random events
+      const events = rollForEvents(state);
+      response.events.push(...events);
+      applyEvents(state, events);
 
-    // Clear expired opportunity events
-    state.pendingEvents = state.pendingEvents.filter(e => {
-      // Opportunities last 3 turns
-      return state.turn - (e.turn || state.turn) < 3;
-    });
+      // Update prices
+      response.priceChanges = updatePrices(state);
+
+      // Check game over
+      checkGameOver(state);
+
+      // Advance turn
+      state.turn++;
+
+      // Clear expired opportunity events
+      state.pendingEvents = state.pendingEvents.filter(e => {
+        // Opportunities last 3 turns
+        return state.turn - (e.turn || state.turn) < 3;
+      });
+    }
   }
 
   response.netWorth = calculateNetWorth(state);
-  response.turnSummary += `Net worth: ${formatMoney(response.netWorth)}`;
+  response.turnAdvanced = shouldAdvanceTurn;
+
+  if (shouldAdvanceTurn) {
+    response.turnSummary += `Net worth: ${formatMoney(response.netWorth)}`;
+  }
 
   return response;
 }

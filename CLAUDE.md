@@ -45,4 +45,4 @@ const result = submitAction(state, { action: 'buy', good: 'h100', quantity: 2 })
 ## Current Status
 
 - Core game loop working
-- Known issue: turns advance on every action (should only advance on travel, per classic Drug Wars)
+- Classic Drug Wars turn system: only travel/wait advance the turn, buy/sell/borrow are instant
