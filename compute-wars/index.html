@@ -197,9 +197,43 @@
 
     .inventory-item {
       display: flex;
+      flex-direction: column;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .inventory-item:last-child {
+      border-bottom: none;
+    }
+
+    .item-main {
+      display: flex;
       align-items: center;
-      padding: 3px 0;
       gap: 8px;
+    }
+
+    .item-cost {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      padding-left: 28px;
+      margin-top: 2px;
+    }
+
+    .cost-label {
+      color: var(--text-muted);
+    }
+
+    .pnl {
+      font-weight: bold;
+    }
+
+    .pnl.positive {
+      color: var(--profit-green);
+    }
+
+    .pnl.negative {
+      color: var(--loss-red);
     }
 
     .item-icon {

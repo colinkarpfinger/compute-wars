@@ -2,7 +2,7 @@
 // COMPUTE WARS - Test Suite
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed, createSaveData, validateSaveData, SAVE_VERSION } from './engine.js';
+import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed, calculateAverageCost, createSaveData, validateSaveData, SAVE_VERSION } from './engine.js';
 import { GOODS, MARKETS } from './data.js';
 
 // ANSI color codes
@@ -158,6 +158,81 @@ test('buy and sell do NOT advance turn', () => {
   const result2 = submitAction(result1.state, { action: 'sell', good: 'compute', quantity: 1 });
   assert(result2.success, 'Sell should succeed');
   assertEqual(result2.state.turn, 1, 'Turn should still be 1 after sell');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cost Basis Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+section('Cost Basis');
+
+test('buying tracks cost basis', () => {
+  let state = createGame();
+  const market = state.markets[state.player.location];
+  const price = market.prices.compute;
+
+  const result = submitAction(state, { action: 'buy', good: 'compute', quantity: 2 });
+  assert(result.success, 'Buy should succeed');
+  assertEqual(result.state.player.costBasis.compute, price * 2, 'Cost basis should equal total spent');
+});
+
+test('calculateAverageCost returns correct average', () => {
+  let state = createGame();
+  state.player.inventory.compute = 4;
+  state.player.costBasis = { compute: 4000 };
+
+  const avg = calculateAverageCost('compute', state.player);
+  assertEqual(avg, 1000, 'Average cost should be 1000');
+});
+
+test('multiple buys accumulate cost basis', () => {
+  let state = createGame();
+  state.player.balance = 100000;
+  const market = state.markets[state.player.location];
+  const price = market.prices.compute;
+
+  // Buy 2
+  let result = submitAction(state, { action: 'buy', good: 'compute', quantity: 2 });
+  state = result.state;
+
+  // Buy 3 more
+  result = submitAction(state, { action: 'buy', good: 'compute', quantity: 3 });
+  state = result.state;
+
+  assertEqual(state.player.inventory.compute, 5, 'Should have 5 compute');
+  assertEqual(state.player.costBasis.compute, price * 5, 'Cost basis should equal total spent');
+});
+
+test('selling reduces cost basis proportionally', () => {
+  let state = createGame();
+  state.player.inventory.compute = 4;
+  state.player.costBasis = { compute: 4000 }; // $1000 avg
+
+  const result = submitAction(state, { action: 'sell', good: 'compute', quantity: 2 });
+  assert(result.success, 'Sell should succeed');
+  assertEqual(result.state.player.inventory.compute, 2, 'Should have 2 left');
+  assertEqual(result.state.player.costBasis.compute, 2000, 'Cost basis should be halved');
+});
+
+test('selling all clears cost basis', () => {
+  let state = createGame();
+  state.player.inventory.compute = 3;
+  state.player.costBasis = { compute: 3000 };
+
+  const result = submitAction(state, { action: 'sell', good: 'compute', quantity: 3 });
+  assert(result.success, 'Sell should succeed');
+  assert(result.state.player.inventory.compute === undefined, 'Inventory should be cleared');
+  assert(result.state.player.costBasis.compute === undefined, 'Cost basis should be cleared');
+});
+
+test('average cost after partial sell remains same', () => {
+  let state = createGame();
+  state.player.inventory.compute = 4;
+  state.player.costBasis = { compute: 4000 }; // $1000 avg
+
+  const result = submitAction(state, { action: 'sell', good: 'compute', quantity: 2 });
+  const avgAfter = calculateAverageCost('compute', result.state.player);
+  assertEqual(avgAfter, 1000, 'Average cost should remain 1000 after partial sell');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

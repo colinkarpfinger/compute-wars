@@ -9,6 +9,7 @@ import {
   submitAction,
   calculateNetWorth,
   calculateInventoryUsed,
+  calculateAverageCost,
   getAvailableActions,
   getMaxBorrowable,
   createSaveData,
@@ -97,16 +98,28 @@ function renderPlayerPanel() {
   const debtClass = gameState.player.debt > 0 ? 'negative' : '';
 
   let inventoryHtml = '';
+  const market = gameState.markets[gameState.player.location];
   if (Object.keys(gameState.player.inventory).length === 0) {
     inventoryHtml = '<div class="empty-inventory">[ Empty ]</div>';
   } else {
     for (const [goodId, quantity] of Object.entries(gameState.player.inventory)) {
       const good = GOODS[goodId];
+      const avgCost = calculateAverageCost(goodId, gameState.player);
+      const currentPrice = market.prices[goodId];
+      const pnlPercent = avgCost > 0 ? ((currentPrice - avgCost) / avgCost * 100) : 0;
+      const pnlClass = pnlPercent >= 0 ? 'positive' : 'negative';
+      const pnlSign = pnlPercent >= 0 ? '+' : '';
       inventoryHtml += `
         <div class="inventory-item">
-          <span class="item-icon">${good.icon}</span>
-          <span class="item-name">${good.name}</span>
-          <span class="item-quantity">x${quantity}</span>
+          <div class="item-main">
+            <span class="item-icon">${good.icon}</span>
+            <span class="item-name">${good.name}</span>
+            <span class="item-quantity">x${quantity}</span>
+          </div>
+          <div class="item-cost">
+            <span class="cost-label">Avg: $${avgCost.toLocaleString()}</span>
+            <span class="pnl ${pnlClass}">${pnlSign}${pnlPercent.toFixed(0)}%</span>
+          </div>
         </div>
       `;
     }

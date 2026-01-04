@@ -71,6 +71,7 @@ export function createInitialState() {
       debtInterestRate: CONFIG.debtBaseInterestRate,
       location: CONFIG.startingLocation,
       inventory: {},
+      costBasis: {},  // Total cost paid per good (for avg cost calculation)
       inventoryCapacity: CONFIG.startingInventoryCapacity,
       reputation: CONFIG.startingReputation
     },
@@ -101,6 +102,13 @@ export function createInitialState() {
 
 export function calculateInventoryUsed(inventory) {
   return Object.values(inventory).reduce((sum, qty) => sum + qty, 0);
+}
+
+export function calculateAverageCost(good, player) {
+  const quantity = player.inventory[good] || 0;
+  const costBasis = player.costBasis[good] || 0;
+  if (quantity === 0) return 0;
+  return Math.round(costBasis / quantity);
 }
 
 export function calculateInventoryValue(inventory, prices) {
@@ -449,9 +457,18 @@ function applyEvents(state, events) {
       case 'seize':
         if (event.good && event.quantity) {
           const currentQty = state.player.inventory[event.good] || 0;
-          state.player.inventory[event.good] = Math.max(0, currentQty - event.quantity);
-          if (state.player.inventory[event.good] === 0) {
-            delete state.player.inventory[event.good];
+          if (currentQty > 0) {
+            const seizeQty = Math.min(event.quantity, currentQty);
+            // Reduce cost basis proportionally
+            const currentCostBasis = state.player.costBasis[event.good] || 0;
+            const costBasisReduction = (seizeQty / currentQty) * currentCostBasis;
+            state.player.costBasis[event.good] = currentCostBasis - costBasisReduction;
+
+            state.player.inventory[event.good] = currentQty - seizeQty;
+            if (state.player.inventory[event.good] === 0) {
+              delete state.player.inventory[event.good];
+              delete state.player.costBasis[event.good];
+            }
           }
         }
         break;
@@ -637,6 +654,7 @@ export function processAction(state, action) {
       // Execute buy
       state.player.balance -= totalCost;
       state.player.inventory[good] = (state.player.inventory[good] || 0) + quantity;
+      state.player.costBasis[good] = (state.player.costBasis[good] || 0) + totalCost;
       state.stats.totalTrades++;
       state.stats.goodsTraded += quantity;
 
@@ -683,9 +701,16 @@ export function processAction(state, action) {
 
       // Execute sell
       state.player.balance += totalRevenue;
+
+      // Reduce cost basis proportionally
+      const currentCostBasis = state.player.costBasis[good] || 0;
+      const costBasisReduction = (quantity / owned) * currentCostBasis;
+      state.player.costBasis[good] = currentCostBasis - costBasisReduction;
+
       state.player.inventory[good] -= quantity;
       if (state.player.inventory[good] === 0) {
         delete state.player.inventory[good];
+        delete state.player.costBasis[good];
       }
       state.stats.totalTrades++;
       state.stats.goodsTraded += quantity;
