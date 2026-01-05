@@ -3,7 +3,7 @@
 // Pure game logic, no DOM dependencies
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { GOODS, MARKETS, SUPPLY_LEVELS, UPGRADES, MILESTONES, EVENTS, CONFIG } from './data.js';
+import { GOODS, MARKETS, SUPPLY_LEVELS, UPGRADES, MILESTONES, EVENTS, TRAVEL_CHOICES, ORACLE, CONFIG } from './data.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Utility Functions
@@ -95,6 +95,12 @@ export function createInitialState() {
       hadDebt: false,
       peakNetWorth: CONFIG.startingBalance
     },
+
+    // Choice event system - when set, player must resolve before continuing
+    pendingChoice: null,  // { type, data, choices, onResolve }
+
+    // Oracle predictions
+    oraclePrediction: null,  // Current active prediction
 
     gameOver: false,
     gameOverReason: null
@@ -637,6 +643,324 @@ function checkGameOver(state) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Travel Choice Events
+// ─────────────────────────────────────────────────────────────────────────────
+
+function rollForTravelChoice(state, destination) {
+  const reputationMod = (state.player.reputation - 50) * CONFIG.reputationEventModifier;
+
+  for (const [eventId, eventData] of Object.entries(TRAVEL_CHOICES)) {
+    // Check if event requires restricted goods
+    if (eventData.requiresRestrictedGoods) {
+      const destMarket = MARKETS[destination];
+      const hasRestricted = Object.keys(state.player.inventory).some(
+        goodId => state.player.inventory[goodId] > 0 && destMarket.restrictedGoods[goodId]
+      );
+      if (!hasRestricted) continue;
+    }
+
+    // Roll for event with reputation modifier
+    const prob = eventData.probability + reputationMod * 0.3;
+    if (Math.random() < prob) {
+      return generateChoiceEvent(eventData, state, destination);
+    }
+  }
+
+  return null;
+}
+
+function generateChoiceEvent(eventData, state, destination) {
+  const template = randomChoice(eventData.templates);
+  const goodId = randomChoice(Object.keys(GOODS));
+  const good = GOODS[goodId];
+
+  // Generate event-specific parameters
+  const params = {
+    good: good.name,
+    goodId,
+    quantity: Math.floor(Math.random() * 5) + 1,
+    discount: Math.floor(Math.random() * 30) + 20, // 20-50%
+    risk: Math.floor(Math.random() * 25) + 15,     // 15-40%
+    amount: Math.floor(state.player.balance * (0.1 + Math.random() * 0.3)), // 10-40% of balance
+    entryFee: Math.floor(Math.random() * 15000) + 5000,
+    cost: Math.floor(Math.random() * 10000) + 5000,
+    company: eventData.companies ? randomChoice(eventData.companies) : 'NVIDIA',
+    accuracy: Math.floor(50 + state.player.reputation * 0.3), // 50-80% based on rep
+    success: Math.floor(60 + state.player.reputation * 0.2)   // 60-80% based on rep
+  };
+
+  // Build display text
+  let text = template.text;
+  let riskText = template.riskText;
+  for (const [key, value] of Object.entries(params)) {
+    text = text.replace(`{${key}}`, value).replace(`$\{${key}}`, formatMoney(value));
+    if (riskText) {
+      riskText = riskText.replace(`{${key}}`, value);
+    }
+  }
+
+  return {
+    id: eventData.id,
+    type: eventData.type,
+    title: eventData.title,
+    text,
+    riskText,
+    choices: template.choices,
+    params,
+    destination
+  };
+}
+
+function resolveChoiceEvent(state, choiceId) {
+  const choice = state.pendingChoice;
+  if (!choice) return { success: false, message: 'No pending choice' };
+
+  const result = { success: true, message: '', gainedGoods: null, lostMoney: 0, gainedMoney: 0 };
+
+  switch (choice.type) {
+    case 'shady_deal':
+      if (choiceId === 'accept') {
+        const roll = Math.random() * 100;
+        if (roll > choice.params.risk) {
+          // Success - get the goods at discount
+          const price = Math.round(
+            state.markets[state.player.location].prices[choice.params.goodId] *
+            (1 - choice.params.discount / 100)
+          ) * choice.params.quantity;
+
+          if (state.player.balance >= price) {
+            state.player.balance -= price;
+            state.player.inventory[choice.params.goodId] =
+              (state.player.inventory[choice.params.goodId] || 0) + choice.params.quantity;
+            state.player.costBasis[choice.params.goodId] =
+              (state.player.costBasis[choice.params.goodId] || 0) + price;
+            result.message = `Deal successful! Got ${choice.params.quantity}x ${choice.params.good} at ${choice.params.discount}% off.`;
+            result.gainedGoods = { good: choice.params.goodId, quantity: choice.params.quantity };
+            result.lostMoney = price;
+          } else {
+            result.message = `You can't afford the deal.`;
+          }
+        } else {
+          // Failed - counterfeit goods, lose money
+          const lostAmount = Math.round(
+            state.markets[state.player.location].prices[choice.params.goodId] *
+            (1 - choice.params.discount / 100)
+          ) * choice.params.quantity;
+          if (state.player.balance >= lostAmount) {
+            state.player.balance -= lostAmount;
+            result.message = `Counterfeit! The goods were worthless. Lost ${formatMoney(lostAmount)}.`;
+            result.lostMoney = lostAmount;
+          } else {
+            result.message = `Lucky break - you couldn't afford it anyway.`;
+          }
+        }
+      } else {
+        result.message = 'You walked away from the deal.';
+      }
+      break;
+
+    case 'gambling':
+      if (choiceId === 'gamble') {
+        const amount = Math.min(choice.params.amount, state.player.balance);
+        if (Math.random() < 0.5) {
+          state.player.balance += amount;
+          result.message = `You won! Doubled your money: +${formatMoney(amount)}`;
+          result.gainedMoney = amount;
+        } else {
+          state.player.balance -= amount;
+          result.message = `You lost! -${formatMoney(amount)}`;
+          result.lostMoney = amount;
+        }
+      } else if (choiceId === 'enter') {
+        const fee = Math.min(choice.params.entryFee, state.player.balance);
+        state.player.balance -= fee;
+        // Random prize - could be great or terrible
+        const multiplier = Math.random() < 0.3 ? (2 + Math.random() * 3) : (Math.random() * 0.5);
+        const prize = Math.round(fee * multiplier);
+        state.player.balance += prize;
+        if (prize > fee) {
+          result.message = `Auction win! Prize: ${formatMoney(prize)} (profit: +${formatMoney(prize - fee)})`;
+          result.gainedMoney = prize - fee;
+        } else {
+          result.message = `Bad luck at the auction. Only got ${formatMoney(prize)} back.`;
+          result.lostMoney = fee - prize;
+        }
+      } else {
+        result.message = 'You passed on the gamble.';
+      }
+      break;
+
+    case 'intel':
+      if (choiceId === 'buy') {
+        const cost = Math.min(choice.params.cost, state.player.balance);
+        state.player.balance -= cost;
+        result.lostMoney = cost;
+
+        // Generate intel (may be true or false)
+        const isAccurate = Math.random() * 100 < choice.params.accuracy;
+        const priceDirection = Math.random() < 0.5 ? 'rise' : 'fall';
+
+        if (isAccurate) {
+          // Schedule a real price event for next turn
+          const eventGood = choice.params.goodId;
+          state.pendingEvents.push({
+            type: 'intel_tip',
+            good: eventGood,
+            direction: priceDirection,
+            turnsRemaining: Math.floor(Math.random() * 2) + 1
+          });
+          result.message = `Intel acquired: "${choice.params.good} prices will ${priceDirection} soon."`;
+        } else {
+          // Bad intel - just a vague message
+          result.message = `Intel acquired: "${choice.params.good} prices will ${priceDirection} soon." (Reliability unclear)`;
+        }
+      } else {
+        result.message = 'You passed on the intel.';
+      }
+      break;
+
+    case 'smuggler':
+      if (choiceId === 'use_smuggler') {
+        const cost = Math.min(choice.params.cost, state.player.balance);
+        state.player.balance -= cost;
+        result.lostMoney = cost;
+
+        if (Math.random() * 100 < choice.params.success) {
+          result.message = `Smuggler succeeded! Your cargo made it through safely.`;
+          // Mark this travel as "smuggled" - skip seizure check
+          state._smuggledThisTrip = true;
+        } else {
+          // Total seizure of restricted goods
+          const destMarket = MARKETS[choice.destination];
+          let seized = [];
+          for (const [goodId, qty] of Object.entries(state.player.inventory)) {
+            if (qty > 0 && destMarket.restrictedGoods[goodId]) {
+              seized.push(`${qty}x ${GOODS[goodId].name}`);
+              delete state.player.inventory[goodId];
+              delete state.player.costBasis[goodId];
+            }
+          }
+          result.message = `Smuggler caught! Lost all restricted cargo: ${seized.join(', ')}`;
+        }
+      } else {
+        result.message = 'You declined the smuggler. Taking the normal route.';
+      }
+      break;
+  }
+
+  state.pendingChoice = null;
+  return result;
+}
+
+// Check for seizure when traveling to restricted market
+function checkSeizureRisk(state, destination) {
+  if (state._smuggledThisTrip) {
+    delete state._smuggledThisTrip;
+    return [];
+  }
+
+  const destMarket = MARKETS[destination];
+  const seized = [];
+  const reputationMod = (state.player.reputation - 50) * 0.002; // 0.2% per rep point
+
+  for (const [goodId, restriction] of Object.entries(destMarket.restrictedGoods || {})) {
+    const qty = state.player.inventory[goodId] || 0;
+    if (qty <= 0) continue;
+
+    const seizureChance = Math.max(0.05, restriction.seizureRisk - reputationMod);
+
+    // Check if cargo insurance helps
+    const hasInsurance = state.purchasedUpgrades.includes('insurance');
+    const insuranceSaves = hasInsurance && Math.random() < 0.5;
+
+    if (Math.random() < seizureChance && !insuranceSaves) {
+      // Seize a portion (30-70% of that good)
+      const seizePercent = 0.3 + Math.random() * 0.4;
+      const seizeQty = Math.max(1, Math.floor(qty * seizePercent));
+
+      state.player.inventory[goodId] -= seizeQty;
+      if (state.player.inventory[goodId] <= 0) {
+        delete state.player.inventory[goodId];
+      }
+
+      // Reduce cost basis proportionally
+      if (state.player.costBasis[goodId]) {
+        state.player.costBasis[goodId] = Math.round(
+          state.player.costBasis[goodId] * (1 - seizeQty / qty)
+        );
+      }
+
+      seized.push({
+        good: goodId,
+        goodName: GOODS[goodId].name,
+        quantity: seizeQty,
+        insuranceSaved: false
+      });
+    } else if (insuranceSaves && Math.random() < seizureChance) {
+      seized.push({
+        good: goodId,
+        goodName: GOODS[goodId].name,
+        quantity: 0,
+        insuranceSaved: true
+      });
+    }
+  }
+
+  return seized;
+}
+
+// Get at-risk goods for travel confirmation
+export function getAtRiskGoods(state, destination) {
+  const destMarket = MARKETS[destination];
+  const atRisk = [];
+
+  for (const [goodId, restriction] of Object.entries(destMarket.restrictedGoods || {})) {
+    const qty = state.player.inventory[goodId] || 0;
+    if (qty > 0) {
+      atRisk.push({
+        goodId,
+        goodName: GOODS[goodId].name,
+        quantity: qty,
+        seizureRisk: Math.round(restriction.seizureRisk * 100),
+        pricePremium: Math.round((restriction.pricePremium - 1) * 100)
+      });
+    }
+  }
+
+  return atRisk;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Oracle System
+// ─────────────────────────────────────────────────────────────────────────────
+
+function rollForOracle(state) {
+  if (Math.random() < ORACLE.probability) {
+    const prediction = randomChoice(ORACLE.predictions);
+    const goodId = randomChoice(Object.keys(GOODS));
+    const marketId = randomChoice(Object.keys(MARKETS));
+
+    let text = prediction.text
+      .replace('{good}', GOODS[goodId].name)
+      .replace('{market}', MARKETS[marketId].name);
+
+    // Adjust accuracy based on reputation
+    const adjustedAccuracy = prediction.accuracy + (state.player.reputation - 50) * 0.003;
+
+    return {
+      text,
+      type: prediction.type,
+      good: goodId,
+      market: marketId,
+      accuracy: adjustedAccuracy,
+      cost: ORACLE.baseCost,
+      isFree: Math.random() < 0.3  // 30% chance of free hint
+    };
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Action Processing
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -652,13 +976,25 @@ export function processAction(state, action) {
     priceChanges: {},
     milestonesAchieved: [],
     netWorth: 0,
-    turnSummary: ''
+    turnSummary: '',
+    // New choice system
+    choiceEvent: null,
+    choiceResult: null,
+    seizures: [],
+    oracleMessage: null
   };
 
   // Check if game is over
   if (state.gameOver) {
     response.error = 'Game is over. Start a new game.';
     response.netWorth = calculateNetWorth(state);
+    return response;
+  }
+
+  // If there's a pending choice, only allow resolveChoice action
+  if (state.pendingChoice && action.action !== 'resolveChoice') {
+    response.error = 'You must resolve the current choice first.';
+    response.choiceEvent = state.pendingChoice;
     return response;
   }
 
@@ -779,7 +1115,7 @@ export function processAction(state, action) {
     }
 
     case 'travel': {
-      const { destination } = action;
+      const { destination, confirmed } = action;
 
       if (!MARKETS[destination]) {
         response.error = `Invalid destination: ${destination}`;
@@ -788,6 +1124,41 @@ export function processAction(state, action) {
       if (destination === state.player.location) {
         response.error = 'Already at this location';
         return response;
+      }
+
+      // Check for at-risk goods if not confirmed
+      const atRiskGoods = getAtRiskGoods(state, destination);
+      if (atRiskGoods.length > 0 && !confirmed) {
+        response.error = 'CONFIRM_RISK';
+        response.atRiskGoods = atRiskGoods;
+        response.destination = destination;
+        return response;
+      }
+
+      // Roll for choice events during travel
+      const choiceEvent = rollForTravelChoice(state, destination);
+      if (choiceEvent) {
+        state.pendingChoice = choiceEvent;
+        state._pendingDestination = destination;  // Store destination for after choice
+        response.choiceEvent = choiceEvent;
+        response.success = true;
+        response.turnSummary = 'An encounter during your journey...';
+        response.state = state;
+        response.netWorth = calculateNetWorth(state);
+        return response;
+      }
+
+      // Check for seizure of restricted goods
+      const seizures = checkSeizureRisk(state, destination);
+      if (seizures.length > 0) {
+        response.seizures = seizures;
+        for (const s of seizures) {
+          if (s.insuranceSaved) {
+            response.turnSummary += `Insurance saved your ${s.goodName}! `;
+          } else {
+            response.turnSummary += `Customs seized ${s.quantity}x ${s.goodName}! `;
+          }
+        }
       }
 
       // Roll for customs events during travel (before arriving)
@@ -802,6 +1173,54 @@ export function processAction(state, action) {
       }
 
       response.turnSummary += `Traveled to ${MARKETS[destination].name}. `;
+      response.success = true;
+      break;
+    }
+
+    case 'resolveChoice': {
+      const { choiceId } = action;
+
+      if (!state.pendingChoice) {
+        response.error = 'No pending choice to resolve';
+        return response;
+      }
+
+      const result = resolveChoiceEvent(state, choiceId);
+      response.choiceResult = result;
+      response.turnSummary = result.message + ' ';
+
+      // If we have a pending destination, complete the travel
+      if (state._pendingDestination) {
+        const destination = state._pendingDestination;
+        delete state._pendingDestination;
+
+        // Check for seizure (unless smuggler succeeded)
+        const seizures = checkSeizureRisk(state, destination);
+        if (seizures.length > 0) {
+          response.seizures = seizures;
+          for (const s of seizures) {
+            if (s.insuranceSaved) {
+              response.turnSummary += `Insurance saved your ${s.goodName}! `;
+            } else {
+              response.turnSummary += `Customs seized ${s.quantity}x ${s.goodName}! `;
+            }
+          }
+        }
+
+        // Roll for other travel events
+        const travelEvents = rollForEvents(state, true, destination);
+        response.events.push(...travelEvents);
+        applyEvents(state, travelEvents);
+
+        // Complete the travel
+        state.player.location = destination;
+        if (!state.stats.marketsVisited.includes(destination)) {
+          state.stats.marketsVisited.push(destination);
+        }
+        response.turnSummary += `Arrived at ${MARKETS[destination].name}. `;
+        response._completedTravel = true;  // Flag for turn advancement
+      }
+
       response.success = true;
       break;
     }
@@ -907,8 +1326,15 @@ export function processAction(state, action) {
 
   // Determine if this action should advance the turn
   // Only travel and wait advance the turn (classic Drug Wars style)
+  // resolveChoice also advances turn if it completed a travel
   const turnAdvancingActions = ['travel', 'wait'];
-  const shouldAdvanceTurn = response.success && turnAdvancingActions.includes(action.action);
+  let shouldAdvanceTurn = response.success && turnAdvancingActions.includes(action.action);
+
+  // resolveChoice advances turn if it completed a travel
+  if (action.action === 'resolveChoice' && response._completedTravel) {
+    shouldAdvanceTurn = true;
+    delete response._completedTravel;
+  }
 
   if (response.success) {
     // Always check milestones (even on non-turn-advancing actions)
@@ -933,6 +1359,13 @@ export function processAction(state, action) {
 
       // Update prices
       response.priceChanges = updatePrices(state);
+
+      // Roll for Oracle appearance
+      const oracle = rollForOracle(state);
+      if (oracle) {
+        response.oracleMessage = oracle;
+        state.oraclePrediction = oracle;
+      }
 
       // Check game over
       checkGameOver(state);

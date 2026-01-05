@@ -2,8 +2,8 @@
 // COMPUTE WARS - Test Suite
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed, calculateAverageCost, getEffectiveBuyPrice, getEffectiveSellPrice, createSaveData, validateSaveData, SAVE_VERSION } from './engine.js';
-import { GOODS, MARKETS } from './data.js';
+import { createGame, submitAction, calculateNetWorth, calculateInventoryUsed, calculateAverageCost, getEffectiveBuyPrice, getEffectiveSellPrice, getAtRiskGoods, createSaveData, validateSaveData, SAVE_VERSION } from './engine.js';
+import { GOODS, MARKETS, TRAVEL_CHOICES } from './data.js';
 
 // ANSI color codes
 const colors = {
@@ -279,20 +279,32 @@ test('getEffectiveSellPrice applies premium from pending event', () => {
 section('Travel Actions');
 
 test('can travel to different market', () => {
-  let state = createGame();
-  assertEqual(state.player.location, 'us-west', 'Should start in us-west');
+  withDeterministicRandom(999, () => {
+    let state = createGame();
+    assertEqual(state.player.location, 'us-west', 'Should start in us-west');
 
-  const result = submitAction(state, { action: 'travel', destination: 'singapore' });
-  assert(result.success, 'Travel should succeed');
-  assertEqual(result.state.player.location, 'singapore', 'Should be in singapore');
+    let result = submitAction(state, { action: 'travel', destination: 'singapore' });
+    // Handle choice events if they occur
+    if (result.choiceEvent) {
+      result = submitAction(result.state, { action: 'resolveChoice', choiceId: 'decline' });
+    }
+    assert(result.success, 'Travel should succeed');
+    assertEqual(result.state.player.location, 'singapore', 'Should be in singapore');
+  });
 });
 
 test('travel advances turn', () => {
-  let state = createGame();
-  const result = submitAction(state, { action: 'travel', destination: 'singapore' });
-  assert(result.success, 'Travel should succeed');
-  assertEqual(result.state.turn, 2, 'Turn should advance to 2');
-  assert(result.turnAdvanced, 'turnAdvanced flag should be true');
+  withDeterministicRandom(999, () => {
+    let state = createGame();
+    let result = submitAction(state, { action: 'travel', destination: 'singapore' });
+    // Handle choice events if they occur
+    if (result.choiceEvent) {
+      result = submitAction(result.state, { action: 'resolveChoice', choiceId: 'decline' });
+    }
+    assert(result.success, 'Travel should succeed');
+    assertEqual(result.state.turn, 2, 'Turn should advance to 2');
+    assert(result.turnAdvanced, 'turnAdvanced flag should be true');
+  });
 });
 
 test('cannot travel to current location', () => {
@@ -303,12 +315,18 @@ test('cannot travel to current location', () => {
 });
 
 test('travel updates markets visited stat', () => {
-  let state = createGame();
-  assertEqual(state.stats.marketsVisited.length, 1, 'Should have visited 1 market');
+  withDeterministicRandom(999, () => {
+    let state = createGame();
+    assertEqual(state.stats.marketsVisited.length, 1, 'Should have visited 1 market');
 
-  const result = submitAction(state, { action: 'travel', destination: 'singapore' });
-  assertEqual(result.state.stats.marketsVisited.length, 2, 'Should have visited 2 markets');
-  assert(result.state.stats.marketsVisited.includes('singapore'), 'Singapore should be in visited');
+    let result = submitAction(state, { action: 'travel', destination: 'singapore' });
+    // Handle choice events if they occur
+    if (result.choiceEvent) {
+      result = submitAction(result.state, { action: 'resolveChoice', choiceId: 'decline' });
+    }
+    assertEqual(result.state.stats.marketsVisited.length, 2, 'Should have visited 2 markets');
+    assert(result.state.stats.marketsVisited.includes('singapore'), 'Singapore should be in visited');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -643,6 +661,110 @@ test('round-trip save/validate works', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Restricted Goods & Seizure Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+section('Restricted Goods & Seizure');
+
+test('getAtRiskGoods returns empty for safe destination', () => {
+  let state = createGame();
+  state.player.inventory = { compute: 5, h100: 2 };
+
+  // US West has no restricted goods
+  const atRisk = getAtRiskGoods(state, 'singapore');
+  assertEqual(atRisk.length, 0, 'Singapore should have no restrictions on standard goods');
+});
+
+test('getAtRiskGoods identifies restricted goods for China East', () => {
+  let state = createGame();
+  state.player.inventory = { h100: 5, h200: 3 };
+
+  // China East has restrictions on h100 and h200
+  const atRisk = getAtRiskGoods(state, 'china-east');
+  assert(atRisk.length >= 2, 'Should identify h100 and h200 as at-risk');
+  assert(atRisk.some(g => g.goodId === 'h100'), 'h100 should be at risk');
+  assert(atRisk.some(g => g.goodId === 'h200'), 'h200 should be at risk');
+});
+
+test('getAtRiskGoods shows seizure risk and price premium', () => {
+  let state = createGame();
+  state.player.inventory = { h100: 5 };
+
+  const atRisk = getAtRiskGoods(state, 'china-east');
+  const h100Risk = atRisk.find(g => g.goodId === 'h100');
+
+  assert(h100Risk.seizureRisk > 0, 'Should have seizure risk');
+  assert(h100Risk.pricePremium > 0, 'Should have price premium');
+  assertEqual(h100Risk.quantity, 5, 'Should show correct quantity');
+});
+
+test('MARKETS have restrictedGoods defined', () => {
+  // China East should have restrictions
+  const chinaEast = MARKETS['china-east'];
+  assert(chinaEast.restrictedGoods, 'China East should have restrictedGoods');
+  assert(chinaEast.restrictedGoods.h100, 'h100 should be restricted in China East');
+  assert(chinaEast.restrictedGoods.h100.seizureRisk > 0, 'Should have seizure risk defined');
+  assert(chinaEast.restrictedGoods.h100.pricePremium > 1, 'Should have price premium > 1');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Choice Event Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+section('Choice Events');
+
+test('TRAVEL_CHOICES data is properly structured', () => {
+  assert(TRAVEL_CHOICES.shady_deal, 'Should have shady_deal');
+  assert(TRAVEL_CHOICES.gambling, 'Should have gambling');
+  assert(TRAVEL_CHOICES.intel, 'Should have intel');
+  assert(TRAVEL_CHOICES.smuggler, 'Should have smuggler');
+
+  // Check structure
+  const shadyDeal = TRAVEL_CHOICES.shady_deal;
+  assert(shadyDeal.id, 'Should have id');
+  assert(shadyDeal.type, 'Should have type');
+  assert(shadyDeal.title, 'Should have title');
+  assert(typeof shadyDeal.probability === 'number', 'Should have probability');
+  assert(Array.isArray(shadyDeal.templates), 'Should have templates array');
+  assert(shadyDeal.templates[0].choices, 'Template should have choices');
+});
+
+test('resolveChoice declines event without side effects', () => {
+  let state = createGame();
+  state.pendingChoice = {
+    type: 'gambling',
+    title: 'Test Gambling',
+    text: 'Double or nothing?',
+    choices: [
+      { id: 'gamble', label: 'Gamble' },
+      { id: 'decline', label: 'Pass' }
+    ],
+    params: { amount: 1000 }
+  };
+  const startBalance = state.player.balance;
+
+  const result = submitAction(state, { action: 'resolveChoice', choiceId: 'decline' });
+  assert(result.success, 'Decline should succeed');
+  assertEqual(result.state.player.balance, startBalance, 'Balance should not change on decline');
+  assertEqual(result.state.pendingChoice, null, 'pendingChoice should be cleared');
+});
+
+test('cannot perform other actions while choice is pending', () => {
+  let state = createGame();
+  state.pendingChoice = {
+    type: 'gambling',
+    title: 'Test',
+    text: 'Test',
+    choices: [{ id: 'decline', label: 'Pass' }],
+    params: {}
+  };
+
+  const result = submitAction(state, { action: 'wait' });
+  assert(!result.success, 'Action should fail with pending choice');
+  assert(result.error.includes('choice'), 'Error should mention choice');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Integration Test: Full Game Flow
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -661,6 +783,10 @@ test('can play through multiple turns', () => {
 
     // Travel to Singapore (higher prices)
     result = submitAction(state, { action: 'travel', destination: 'singapore' });
+    // Handle choice events if they occur
+    if (result.choiceEvent) {
+      result = submitAction(result.state, { action: 'resolveChoice', choiceId: 'decline' });
+    }
     assert(result.success, 'Travel should succeed');
     state = result.state;
     assertEqual(state.turn, 2, 'Turn should be 2');
@@ -677,6 +803,10 @@ test('can play through multiple turns', () => {
 
     // Travel back
     result = submitAction(state, { action: 'travel', destination: 'us-west' });
+    // Handle choice events if they occur
+    if (result.choiceEvent) {
+      result = submitAction(result.state, { action: 'resolveChoice', choiceId: 'decline' });
+    }
     assert(result.success, 'Travel back should succeed');
     state = result.state;
     assertEqual(state.turn, 3, 'Turn should be 3');

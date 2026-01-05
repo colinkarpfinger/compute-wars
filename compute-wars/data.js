@@ -79,6 +79,7 @@ export const MARKETS = {
       talent: 1.1      // +10% on talent
     },
     customsRisk: 0.05,  // Low risk
+    restrictedGoods: {},  // No restrictions
     description: 'Stable prices, high volume, strict regulations.'
   },
   'eu-central': {
@@ -90,26 +91,34 @@ export const MARKETS = {
       h200: 0.95,
       b100: 0.95,
       compute: 1.0,
-      datasets: 1.15,   // +15% on datasets (GDPR demand)
+      datasets: 1.4,   // +40% on datasets (GDPR scarcity = high demand)
       talent: 1.0
     },
     customsRisk: 0.08,
-    description: 'Moderate prices, data privacy restrictions.'
+    restrictedGoods: {
+      datasets: { seizureRisk: 0.25, pricePremium: 1.4 }  // 25% seizure risk, 40% higher prices
+    },
+    description: 'Data privacy restrictions. Datasets risky but lucrative.'
   },
   'china-east': {
     id: 'china-east',
     name: 'China East',
     subtitle: 'Shanghai · Export Controls',
     priceModifiers: {
-      h100: 0.8,       // -20% on hardware (manufacturing)
-      h200: 0.8,
-      b100: 0.85,
+      h100: 1.5,       // +50% on restricted hardware (high demand due to ban)
+      h200: 1.6,       // +60%
+      b100: 1.8,       // +80% (most restricted)
       compute: 0.9,
       datasets: 1.0,
       talent: 0.85
     },
-    customsRisk: 0.20,  // High risk - export controls
-    description: 'Volatile, export restrictions, high demand.'
+    customsRisk: 0.15,
+    restrictedGoods: {
+      h100: { seizureRisk: 0.30, pricePremium: 1.5 },   // 30% seizure, 50% premium
+      h200: { seizureRisk: 0.35, pricePremium: 1.6 },   // 35% seizure, 60% premium
+      b100: { seizureRisk: 0.45, pricePremium: 1.8 }    // 45% seizure, 80% premium
+    },
+    description: 'Export controls on GPUs. High risk, high reward.'
   },
   'singapore': {
     id: 'singapore',
@@ -124,7 +133,8 @@ export const MARKETS = {
       talent: 1.15
     },
     customsRisk: 0.03,  // Lowest risk
-    description: 'Trading hub, fewer restrictions, premium prices.'
+    restrictedGoods: {},  // No restrictions - safe haven
+    description: 'Trading hub, no restrictions, premium prices.'
   }
 };
 
@@ -391,6 +401,105 @@ export const EVENTS = {
     ],
     probability: 0.02
   }
+};
+
+// Travel choice events - require player decision
+export const TRAVEL_CHOICES = {
+  shady_deal: {
+    id: 'shady_deal',
+    type: 'shady_deal',
+    title: 'Shady Deal',
+    probability: 0.12,
+    templates: [
+      {
+        text: 'A nervous seller approaches: "I have {quantity}x {good} at {discount}% off. No questions asked..."',
+        riskText: '{risk}% chance they\'re counterfeit',
+        choices: [
+          { id: 'accept', label: 'Accept the Risk', icon: '⚠' },
+          { id: 'decline', label: 'Walk Away', icon: '✗' }
+        ]
+      }
+    ]
+  },
+  gambling: {
+    id: 'gambling',
+    type: 'gambling',
+    title: 'Underground Casino',
+    probability: 0.08,
+    templates: [
+      {
+        text: 'You stumble upon an underground GPU casino. "Double or nothing on ${amount}?"',
+        riskText: '50% chance to double, 50% to lose it all',
+        choices: [
+          { id: 'gamble', label: 'Let it Ride', icon: '🎲' },
+          { id: 'decline', label: 'Too Risky', icon: '✗' }
+        ]
+      },
+      {
+        text: 'A high-stakes GPU auction is starting. Entry fee: ${entryFee}. Mystery prize pool.',
+        riskText: 'Could win big... or lose your entry',
+        choices: [
+          { id: 'enter', label: 'Enter Auction', icon: '💰' },
+          { id: 'decline', label: 'Skip It', icon: '✗' }
+        ]
+      }
+    ]
+  },
+  intel: {
+    id: 'intel',
+    type: 'intel',
+    title: 'Intel Offer',
+    probability: 0.10,
+    templates: [
+      {
+        text: 'A former {company} engineer whispers: "I know something about {good} prices. ${cost} for the tip."',
+        riskText: '{accuracy}% chance the intel is accurate',
+        choices: [
+          { id: 'buy', label: 'Buy the Intel', icon: '🔍' },
+          { id: 'decline', label: 'Pass', icon: '✗' }
+        ]
+      }
+    ],
+    companies: ['OpenAI', 'Anthropic', 'Google DeepMind', 'Meta AI', 'NVIDIA', 'Microsoft']
+  },
+  smuggler: {
+    id: 'smuggler',
+    type: 'smuggler',
+    title: 'Smuggler Contact',
+    probability: 0.06,
+    requiresRestrictedGoods: true,
+    templates: [
+      {
+        text: 'A smuggler offers to move your restricted cargo past customs for ${cost}.',
+        riskText: '{success}% success rate. Failure = total seizure',
+        choices: [
+          { id: 'use_smuggler', label: 'Use Smuggler', icon: '🕵' },
+          { id: 'decline', label: 'Take Normal Route', icon: '✗' }
+        ]
+      }
+    ]
+  }
+};
+
+// Oracle predictions
+export const ORACLE = {
+  name: 'The Algorithm',
+  icon: '[◈◈◈]',
+  probability: 0.15,  // Chance to appear each turn
+  baseCost: 5000,
+  predictions: [
+    { text: 'I sense {good} prices will surge within 2 turns...', type: 'price_up', accuracy: 0.70 },
+    { text: 'The market whispers of a {good} crash coming...', type: 'price_down', accuracy: 0.70 },
+    { text: 'Customs will tighten at {market} soon. Be warned.', type: 'customs', accuracy: 0.65 },
+    { text: 'A great opportunity approaches for those who hold {good}...', type: 'opportunity', accuracy: 0.60 },
+    { text: 'I foresee turbulence. All markets will shift.', type: 'volatility', accuracy: 0.55 }
+  ],
+  freeHints: [
+    'The winds favor the patient trader...',
+    'Fortune smiles on those with diverse holdings...',
+    'Beware the market that seems too calm...',
+    'High debt invites misfortune...'
+  ]
 };
 
 export const CONFIG = {

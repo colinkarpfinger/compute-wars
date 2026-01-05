@@ -3,7 +3,7 @@
 // DOM rendering and event handling
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { GOODS, MARKETS, SUPPLY_LEVELS, UPGRADES, ASCII } from './data.js';
+import { GOODS, MARKETS, SUPPLY_LEVELS, UPGRADES, ASCII, TRAVEL_CHOICES } from './data.js';
 import {
   createGame,
   submitAction,
@@ -14,6 +14,7 @@ import {
   getMaxBorrowable,
   getEffectiveBuyPrice,
   getEffectiveSellPrice,
+  getAtRiskGoods,
   createSaveData,
   validateSaveData,
   SAVE_VERSION
@@ -643,6 +644,88 @@ function renderUpgradesModal() {
   `);
 }
 
+function renderChoiceModal(choice) {
+  let choicesHtml = '';
+  for (const opt of choice.choices) {
+    choicesHtml += `
+      <button class="btn btn-choice" data-choice-id="${opt.id}">
+        <span class="choice-icon">${opt.icon || ''}</span>
+        <span class="choice-label">${opt.label}</span>
+      </button>
+    `;
+  }
+
+  return renderModal(`
+    <div class="modal-header choice-header">${choice.title}</div>
+    <div class="modal-divider">════════════════════════════════</div>
+    <div class="modal-content choice-content">
+      <div class="choice-text">${choice.text}</div>
+      ${choice.riskText ? `<div class="choice-risk">⚠ ${choice.riskText}</div>` : ''}
+    </div>
+    <div class="choice-actions">
+      ${choicesHtml}
+    </div>
+  `);
+}
+
+function renderTravelConfirmModal(destination, atRiskGoods) {
+  const destMarket = MARKETS[destination];
+
+  let riskTableHtml = '';
+  for (const item of atRiskGoods) {
+    riskTableHtml += `
+      <div class="risk-row">
+        <span class="risk-good">${GOODS[item.goodId].icon} ${item.goodName}</span>
+        <span class="risk-qty">x${item.quantity}</span>
+        <span class="risk-chance">${item.seizureRisk}% seizure</span>
+        <span class="risk-premium">+${item.pricePremium}% price</span>
+      </div>
+    `;
+  }
+
+  return renderModal(`
+    <div class="modal-header travel-confirm-header">⚠ RESTRICTED ZONE</div>
+    <div class="modal-divider">════════════════════════════════</div>
+    <div class="modal-content travel-confirm-content">
+      <div class="confirm-warning">
+        You are entering <strong>${destMarket.name}</strong>, which has restrictions on some of your cargo.
+      </div>
+      <div class="confirm-subtitle">AT-RISK INVENTORY:</div>
+      <div class="risk-table">
+        ${riskTableHtml}
+      </div>
+      <div class="confirm-note">
+        Restricted goods sell for higher prices here, but customs may seize part of your cargo.
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="btn-modal-cancel">CANCEL</button>
+      <button class="btn btn-confirm btn-danger" id="btn-modal-confirm"
+              data-action="travel" data-destination="${destination}">PROCEED ANYWAY</button>
+    </div>
+  `);
+}
+
+function renderSeizureNotice(seizureInfo) {
+  if (!seizureInfo || seizureInfo.length === 0) return '';
+
+  let seizureHtml = '';
+  for (const item of seizureInfo) {
+    seizureHtml += `<div class="seized-item">${GOODS[item.goodId].icon} ${item.quantity}x ${item.goodName} SEIZED!</div>`;
+  }
+
+  return `
+    <div class="seizure-notice" id="seizure-notice">
+      <div class="seizure-border">╔══════════════════════════════════════╗</div>
+      <div class="seizure-content">
+        <div class="seizure-title">⚠ CUSTOMS SEIZURE ⚠</div>
+        ${seizureHtml}
+      </div>
+      <div class="seizure-border">╚══════════════════════════════════════╝</div>
+    </div>
+  `;
+}
+
 function renderMilestoneToast(milestone) {
   return `
     <div class="milestone-toast" id="milestone-toast">
@@ -759,15 +842,17 @@ function attachEvents() {
     btn.addEventListener('click', () => {
       const destination = btn.dataset.destination;
 
-      // Show traveling animation
-      travelingTo = destination;
-      render();
+      // Check for at-risk goods
+      const atRiskGoods = getAtRiskGoods(gameState, destination);
 
-      // Execute travel and show result after delay
-      setTimeout(() => {
-        travelingTo = null;
-        executeAction({ action: 'travel', destination });
-      }, 800);
+      if (atRiskGoods.length > 0) {
+        // Show confirmation modal
+        showModal(renderTravelConfirmModal(destination, atRiskGoods));
+        attachTravelConfirmModalEvents(destination);
+      } else {
+        // No risk, travel directly
+        startTravel(destination);
+      }
     });
   });
 
@@ -941,6 +1026,61 @@ function attachGameOverEvents() {
   });
 }
 
+function startTravel(destination) {
+  // Show traveling animation
+  travelingTo = destination;
+  render();
+
+  // Execute travel and show result after delay
+  setTimeout(() => {
+    travelingTo = null;
+    executeAction({ action: 'travel', destination, confirmed: true });
+  }, 800);
+}
+
+function attachTravelConfirmModalEvents(destination) {
+  document.getElementById('btn-modal-cancel')?.addEventListener('click', closeModal);
+
+  document.getElementById('btn-modal-confirm')?.addEventListener('click', () => {
+    closeModal();
+    startTravel(destination);
+  });
+
+  document.getElementById('modal-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-overlay') closeModal();
+  });
+}
+
+function attachChoiceModalEvents() {
+  document.querySelectorAll('.btn-choice').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const choiceId = btn.dataset.choiceId;
+      closeModal();
+      executeAction({ action: 'resolveChoice', choiceId });
+    });
+  });
+}
+
+function showChoiceModal(choiceEvent) {
+  showModal(renderChoiceModal(choiceEvent));
+  attachChoiceModalEvents();
+}
+
+function showSeizureNotice(seizureInfo) {
+  const container = document.createElement('div');
+  container.innerHTML = renderSeizureNotice(seizureInfo);
+  document.body.appendChild(container.firstElementChild);
+
+  // Auto-dismiss after delay
+  setTimeout(() => {
+    const notice = document.getElementById('seizure-notice');
+    if (notice) {
+      notice.classList.add('fade-out');
+      setTimeout(() => notice.remove(), 500);
+    }
+  }, 4000);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Action Execution
 // ─────────────────────────────────────────────────────────────────────────────
@@ -955,8 +1095,18 @@ function executeAction(action) {
 
   gameState = result.state;
 
-  // Log the turn summary
-  addLogEntry('action', result.turnSummary);
+  // Log the turn summary if present
+  if (result.turnSummary) {
+    addLogEntry('action', result.turnSummary);
+  }
+
+  // Log choice result message if present
+  if (result.choiceResult) {
+    const type = result.choiceResult.gainedMoney > 0 ? 'positive'
+      : result.choiceResult.lostMoney > 0 ? 'negative'
+      : 'neutral';
+    addLogEntry(type, result.choiceResult.message);
+  }
 
   // Log events
   for (const event of result.events) {
@@ -964,6 +1114,14 @@ function executeAction(action) {
       : ['opportunity', 'windfall'].includes(event.type) ? 'positive'
       : 'neutral';
     addLogEntry(type, `${event.title}: ${event.description}`);
+  }
+
+  // Show seizure notice if any goods were seized
+  if (result.seizureInfo && result.seizureInfo.length > 0) {
+    showSeizureNotice(result.seizureInfo);
+    for (const item of result.seizureInfo) {
+      addLogEntry('negative', `CUSTOMS: ${item.quantity}x ${item.goodName} seized!`);
+    }
   }
 
   // Show milestone toasts
@@ -975,6 +1133,11 @@ function executeAction(action) {
   saveGame(true);
 
   render();
+
+  // Show choice modal if there's a pending choice (after render)
+  if (result.choiceEvent) {
+    setTimeout(() => showChoiceModal(result.choiceEvent), 100);
+  }
 }
 
 function addLogEntry(type, text) {
