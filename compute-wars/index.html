@@ -817,6 +817,51 @@
       font-size: 16px;
     }
 
+    /* Choice Result Display */
+    .choice-result {
+      padding: 20px;
+      text-align: center;
+    }
+
+    .choice-result .result-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .choice-result .result-message {
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .choice-result.result-win .result-icon {
+      color: var(--profit-green);
+      text-shadow: 0 0 20px rgba(68, 255, 68, 0.5);
+    }
+
+    .choice-result.result-loss .result-icon {
+      color: var(--loss-red);
+      text-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+    }
+
+    .choice-result.result-neutral .result-icon {
+      color: var(--text-muted);
+    }
+
+    .result-gain {
+      color: var(--profit-green);
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .result-loss-amount {
+      color: var(--loss-red);
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
     /* Travel Confirm Modal */
     .travel-confirm-header {
       color: var(--loss-red);

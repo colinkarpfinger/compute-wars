@@ -1055,10 +1055,82 @@ function attachChoiceModalEvents() {
   document.querySelectorAll('.btn-choice').forEach(btn => {
     btn.addEventListener('click', () => {
       const choiceId = btn.dataset.choiceId;
-      closeModal();
-      executeAction({ action: 'resolveChoice', choiceId });
+
+      // Execute action and get result
+      const result = submitAction(gameState, { action: 'resolveChoice', choiceId });
+
+      if (!result.success) {
+        closeModal();
+        addLogEntry('error', result.error);
+        return;
+      }
+
+      // Update game state
+      gameState = result.state;
+
+      // Show result in the modal
+      showChoiceResult(result.choiceResult, choiceId);
     });
   });
+}
+
+function showChoiceResult(choiceResult, choiceId) {
+  const modal = document.querySelector('.modal');
+  if (!modal) return;
+
+  // Determine result type for styling
+  const isWin = choiceResult.gainedMoney > 0 || choiceResult.gainedGoods;
+  const isLoss = choiceResult.lostMoney > 0 && !choiceResult.gainedGoods;
+  const isNeutral = choiceId === 'decline' || (!isWin && !isLoss);
+
+  let resultClass = 'result-neutral';
+  let resultIcon = '→';
+  if (isWin) {
+    resultClass = 'result-win';
+    resultIcon = '✓';
+  } else if (isLoss) {
+    resultClass = 'result-loss';
+    resultIcon = '✗';
+  }
+
+  // Update modal content to show result
+  const content = modal.querySelector('.choice-content');
+  const actions = modal.querySelector('.choice-actions');
+
+  if (content) {
+    content.innerHTML = `
+      <div class="choice-result ${resultClass}">
+        <div class="result-icon">${resultIcon}</div>
+        <div class="result-message">${choiceResult.message}</div>
+        ${choiceResult.gainedMoney > 0 ? `<div class="result-gain">+${formatMoneyFull(choiceResult.gainedMoney)}</div>` : ''}
+        ${choiceResult.lostMoney > 0 ? `<div class="result-loss-amount">-${formatMoneyFull(choiceResult.lostMoney)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  if (actions) {
+    actions.innerHTML = `
+      <button class="btn btn-confirm" id="btn-choice-ok">OK</button>
+    `;
+  }
+
+  // Attach OK button handler
+  document.getElementById('btn-choice-ok')?.addEventListener('click', () => {
+    closeModal();
+    finalizeChoiceAction(choiceResult);
+  });
+}
+
+function finalizeChoiceAction(choiceResult) {
+  // Log the result
+  const type = choiceResult.gainedMoney > 0 ? 'positive'
+    : choiceResult.lostMoney > 0 ? 'negative'
+    : 'neutral';
+  addLogEntry(type, choiceResult.message);
+
+  // Auto-save and render
+  saveGame(true);
+  render();
 }
 
 function showChoiceModal(choiceEvent) {
@@ -1100,13 +1172,7 @@ function executeAction(action) {
     addLogEntry('action', result.turnSummary);
   }
 
-  // Log choice result message if present
-  if (result.choiceResult) {
-    const type = result.choiceResult.gainedMoney > 0 ? 'positive'
-      : result.choiceResult.lostMoney > 0 ? 'negative'
-      : 'neutral';
-    addLogEntry(type, result.choiceResult.message);
-  }
+  // Note: choice results are logged by finalizeChoiceAction after modal closes
 
   // Log events
   for (const event of result.events) {
